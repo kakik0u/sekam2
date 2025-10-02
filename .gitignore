@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.venv/*
+archive/*
+cache/*
+docs/*
+fonts/*
+script/*
+spam/*
+spamer.txt
+discord-emojis.pretty.json
+database/*

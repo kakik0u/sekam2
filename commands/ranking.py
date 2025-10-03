@@ -7,10 +7,11 @@ from discord import app_commands
 from core.zichi import enforce_zichi_block
 from core.log import insert_command_log
 from spam.protection import is_overload_allowed
-from database.connection import run_statdb_query
+from database.connection import run_statdb_query, run_aidb_query
 from utils.cache import load_json_cache, save_json_cache, get_reference_data_label
 from utils.emoji import normalize_emoji_and_variants
 import config
+from datetime import datetime, timedelta
 
 
 async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord.Client):
@@ -591,3 +592,204 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
             except Exception:
                 await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+
+    @tree.command(name="airank", description="AI部門のリアクションランキングを表示")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.describe(
+        emoji="リアクション絵文字（例: 👍 または grin）",
+        before="この日付より前（YYYY-MM-DD形式、この日は含まない）",
+        after="この日付より後（YYYY-MM-DD形式、この日は含まない）",
+        page="ページ番号（1ページ目=1-10件、2ページ目=11-20件）"
+    )
+    async def airank(
+        ctx: discord.Interaction,
+        emoji: str,
+        before: str = None,
+        after: str = None,
+        page: int = 1
+    ):
+        """AI部門の特定リアクションを最も多く獲得したメッセージのランキングを表示"""
+        # ユーザーID制限: 668479297551466516 のみ許可
+        if ctx.user.id != 668479297551466516:
+            await ctx.response.send_message("このコマンドの実行権限がありません。", ephemeral=True)
+            insert_command_log(ctx, "/airank", "DENY_PERMISSION")
+            return
+        
+        if await enforce_zichi_block(ctx, "/airank"):
+            return
+        
+        print(f"airankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), emoji={emoji}, before={before}, after={after}, page={page}")
+        
+        try:
+            await ctx.response.defer()
+            
+            # 絵文字の正規化
+            base_name, tone_variants = normalize_emoji_and_variants(emoji)
+            if not base_name or not tone_variants:
+                await ctx.followup.send("絵文字（または絵文字名）を判別できませんでした。", ephemeral=True)
+                insert_command_log(ctx, "/airank", "INVALID_EMOJI")
+                return
+            
+            # 日付のバリデーション
+            before_date = None
+            after_date = None
+            
+            if before:
+                try:
+                    before_date = datetime.strptime(before, "%Y-%m-%d")
+                except ValueError:
+                    await ctx.followup.send("beforeの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。", ephemeral=True)
+                    insert_command_log(ctx, "/airank", "INVALID_BEFORE_DATE")
+                    return
+            
+            if after:
+                try:
+                    after_date = datetime.strptime(after, "%Y-%m-%d")
+                except ValueError:
+                    await ctx.followup.send("afterの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。", ephemeral=True)
+                    insert_command_log(ctx, "/airank", "INVALID_AFTER_DATE")
+                    return
+            
+            # ページ番号のバリデーション
+            if page < 1:
+                page = 1
+            
+            # SQLクエリの構築
+            # emoji_nameで絞り込み + before/after条件 + 添付ファイルまたはsora.chatgpt.com含有チェック
+            placeholders = ", ".join(["%s"] * len(tone_variants))
+            params = list(tone_variants)
+            
+            where_conditions = [f"r.emoji_name IN ({placeholders})"]
+            
+            # before条件（before日付を含まない: < before）
+            if before_date:
+                where_conditions.append("m.timestamp < %s")
+                params.append(before_date)
+            
+            # after条件（after日付を含まない: > after）
+            if after_date:
+                where_conditions.append("m.timestamp > %s")
+                params.append(after_date)
+            
+            # 添付ファイルがあるか、sora.chatgpt.comを含むメッセージのみ
+            where_conditions.append(
+                "(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id) "
+                "OR m.content LIKE '%%sora.chatgpt.com%%')"
+            )
+            
+            where_clause = " AND ".join(where_conditions)
+            
+            # ページネーション: LIMIT 10 OFFSET (page-1)*10
+            offset = (page - 1) * 10
+            
+            sql = f"""
+                SELECT 
+                    m.id as message_id,
+                    m.channel_id,
+                    m.content,
+                    SUM(r.count) as total_reaction_count
+                FROM messages m
+                JOIN reactions r ON m.id = r.message_id
+                WHERE {where_clause}
+                GROUP BY m.id, m.channel_id, m.content
+                ORDER BY total_reaction_count DESC
+                LIMIT 10 OFFSET %s
+            """
+            params.append(offset)
+            
+            rows = run_aidb_query(sql, tuple(params), fetch="all")
+            
+            if not rows:
+                await ctx.followup.send(
+                    f"指定された条件に一致するメッセージが見つかりませんでした。（ページ{page}）",
+                    ephemeral=True
+                )
+                insert_command_log(ctx, "/airank", "NO_DATA")
+                return
+            
+            # ヘッダーメッセージの構築
+            header_parts = ["SEKAM統計所AI部", "専科AI動画", f":{base_name}:部門"]
+            
+            # 期間ラベルの生成
+            if before_date is None and after_date is None:
+                period_label = "総合ランキング"
+            elif before_date and after_date:
+                # before-1とafter+1の日付を計算
+                after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
+                before_minus_one = (before_date - timedelta(days=1)).strftime("%Y/%m/%d")
+                
+                if after_plus_one == before_minus_one:
+                    period_label = f"デイリーランキング:{after_plus_one}"
+                else:
+                    period_label = f"{after_plus_one}-{before_minus_one}期間のランキング"
+            elif after_date:
+                after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
+                period_label = f"{after_plus_one}以降のランキング"
+            else:  # before_date のみ
+                before_minus_one = (before_date - timedelta(days=1)).strftime("%Y/%m/%d")
+                period_label = f"{before_minus_one}までのランキング"
+            
+            header_parts.append(period_label)
+            header_parts.append("-# データは前日までのものです。リアクション数は流動します。")
+            header_message = "\n".join(header_parts)
+            
+            # Embedの作成（最大10件）
+            embeds = []
+            for idx, row in enumerate(rows):
+                message_id = row[0]
+                channel_id = row[1]
+                content = row[2] if row[2] is not None else ""
+                total_count = int(row[3]) if row[3] is not None else 0
+                
+                # 添付ファイルの取得
+                attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
+                attachment_row = run_aidb_query(attachment_sql, (message_id,), fetch="one")
+                image_url = attachment_row[0] if attachment_row and attachment_row[0] else None
+                
+                # ランク番号
+                rank = offset + idx + 1
+                
+                # 説明文（添付ファイルがある場合も考慮）
+                if content.strip() != "":
+                    desc = content
+                elif image_url:
+                    desc = "Embedでの動画表示ができないため、代替案を模索中です。"
+                else:
+                    desc = "（内容なし）"
+                
+                # メッセージリンク（サーバーID: 518371205452005387）
+                link = f"https://discord.com/channels/518371205452005387/{channel_id}/{message_id}"
+                
+                # Embed作成
+                embed = discord.Embed(
+                    title=f"{rank}位: メッセージに移動",
+                    url=link,
+                    description=desc
+                )
+                embed.add_field(name="リアクション数", value=f":{base_name}: × {total_count}", inline=False)
+                
+                # 添付ファイル（画像）を設定
+                if image_url:
+                    embed.set_image(url=image_url)
+                
+                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+                embeds.append(embed)
+            
+            # ヘッダーメッセージと全てのEmbedを1つのメッセージで送信（最大10個まで）
+            await ctx.followup.send(header_message, embeds=embeds)
+            
+            insert_command_log(ctx, "/airank", "OK")
+            
+        except Exception as e:
+            if config.debug:
+                print(f"airankエラー: {e}")
+                import traceback
+                traceback.print_exc()
+            insert_command_log(ctx, "/airank", f"ERROR:{e}")
+            try:
+                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+            except Exception:
+                try:
+                    await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                except Exception:
+                    pass

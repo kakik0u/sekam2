@@ -8,6 +8,7 @@ from .ranking import setup_ranking_commands
 from .reaction import setup_reaction_commands
 from .graph import setup_graph_commands
 from .misc import setup_misc_commands
+from .test import setup_test_commands
 
 __all__ = [
     "setup_admin_commands",
@@ -16,6 +17,7 @@ __all__ = [
     "setup_reaction_commands",
     "setup_graph_commands",
     "setup_misc_commands",
+    "setup_test_commands",
     "setup_all_commands",
 ]
 
@@ -34,3 +36,4 @@ async def setup_all_commands(tree, client):
     await setup_reaction_commands(tree, client)
     await setup_graph_commands(tree, client)
     await setup_misc_commands(tree, client)
+    await setup_test_commands(tree, client)

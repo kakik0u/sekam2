@@ -7,7 +7,6 @@ import discord
 from discord import app_commands
 import aiodns
 from aiohttp import ClientSession, TCPConnector
-from config import TOKEN
 
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)

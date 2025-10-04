@@ -9,12 +9,11 @@ def savejson(dir, data):
 def loadjson(dir):
     import json
 
-    encoding = "utf-8"
     try:
         with open(dir, mode="rt", encoding="utf-8") as f:
             data = json.load(f)
         return data
-    except:
+    except Exception:
         return "error"
 
 

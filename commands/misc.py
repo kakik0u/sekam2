@@ -4,7 +4,6 @@
 """
 
 import discord
-from discord import app_commands
 from discord.app_commands import allowed_installs
 
 from core.zichi import insert_zichi_request

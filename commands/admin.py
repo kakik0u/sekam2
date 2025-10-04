@@ -5,12 +5,9 @@
 
 from typing import Optional
 import discord
-from bot import tree
 
-from spam.protection import is_overload_allowed
 from core.zichi import enforce_zichi_block
 from core.log import insert_command_log, handle_command_error
-from config import OVERLOAD_MODE
 
 
 async def setup_admin_commands(tree, client):

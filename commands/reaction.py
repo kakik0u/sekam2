@@ -121,7 +121,7 @@ async def setup_reaction_commands(
                     f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
                     embed=embed,
                 )
-                insert_command_log(ctx, "/reactionrank", f"37")
+                insert_command_log(ctx, "/reactionrank", "37")
                 return
             embed = discord.Embed(title=f"{rank}位/{my_total}個の:{base_name}:")
             embed.set_footer(
@@ -132,7 +132,7 @@ async def setup_reaction_commands(
                 f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
                 embed=embed,
             )
-            insert_command_log(ctx, "/reactionrank", f"OK")
+            insert_command_log(ctx, "/reactionrank", "OK")
         except Exception as e:
             if config.debug:
                 print(f"reactionrankエラー: {e}")
@@ -346,7 +346,7 @@ async def setup_reaction_commands(
 
             if total == 0 or not has_give:
                 embed = discord.Embed(
-                    title=f"誰にも笑ったことがないです。(0個の:grin:をあげました)"
+                    title="誰にも笑ったことがないです。(0個の:grin:をあげました)"
                 )
                 embed.description = (
                     f"もらった:grin: : {grincount}個\nあげた:grin: : {givegrincount}個"

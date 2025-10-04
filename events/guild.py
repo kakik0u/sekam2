@@ -17,9 +17,9 @@ def setup_guild_events(client):
     async def on_guild_join(guild):
         owner = guild.owner
         greeting_message = (
-            f"こんにちは、SEKAM2です。\n"
-            f"サーバーへの採用ありがとうございます。\n"
-            f"説明が必要な機能が3つあるので説明させてください。"
+            "こんにちは、SEKAM2です。\n"
+            "サーバーへの採用ありがとうございます。\n"
+            "説明が必要な機能が3つあるので説明させてください。"
         )
 
         embed = discord.Embed(

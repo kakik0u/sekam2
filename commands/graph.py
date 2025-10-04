@@ -5,7 +5,6 @@
 """
 
 import discord
-from discord import app_commands
 from discord.app_commands import allowed_installs
 import os
 import tempfile
@@ -243,7 +242,7 @@ def create_channel_graph(
 
         # 縦棒グラフを描画
         x_positions = range(len(channel_labels))
-        bars = ax.bar(x_positions, counts, color="#5865F2", width=0.6)
+        _bars = ax.bar(x_positions, counts, color="#5865F2", width=0.6)
 
         # X軸のラベル設定（空白にして後でPillowで描画）
         ax.set_xticks(x_positions)
@@ -330,7 +329,7 @@ def create_channel_graph(
             final_img.paste(graph_img, (x_offset, y_offset), graph_img)
 
             # テキスト追加（ユーザー名と参照ラベル）
-            draw = ImageDraw.Draw(final_img)
+            _draw = ImageDraw.Draw(final_img)
 
             try:
                 # フォント読み込み
@@ -455,7 +454,6 @@ def create_reaction_graph(
         # フォントパスの設定
         font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
         normal_font_path = os.path.join(font_dir, "UDShingoL.otf")
-        emoji_font_path = os.path.join(font_dir, "twiemoji.ttf")
 
         # データの準備
         emoji_labels = []  # 絵文字表示用
@@ -476,7 +474,7 @@ def create_reaction_graph(
 
         # 縦棒グラフを描画
         x_positions = range(len(emoji_labels))
-        bars = ax.bar(x_positions, counts, color="#5865F2", width=0.6)
+        _bars = ax.bar(x_positions, counts, color="#5865F2", width=0.6)
 
         # X軸のラベル設定（空白にして後でPillowで描画）
         ax.set_xticks(x_positions)
@@ -562,7 +560,7 @@ def create_reaction_graph(
             final_img.paste(graph_img, (x_offset, y_offset), graph_img)
 
             # テキスト追加（ユーザー名と参照ラベル）
-            draw = ImageDraw.Draw(final_img)
+            _draw = ImageDraw.Draw(final_img)
 
             try:
                 # フォント読み込み
@@ -677,9 +675,6 @@ def create_reaction_graph(
         if debug:
             print(f"グラフ生成エラー: {e}")
         raise
-
-
-from config import debug
 
 
 async def setup_graph_commands(tree, client):

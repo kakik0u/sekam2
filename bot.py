@@ -7,7 +7,6 @@ import discord
 from discord import app_commands
 import aiodns
 from aiohttp import ClientSession, TCPConnector
-from config import TOKEN
 
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
@@ -19,7 +18,7 @@ async def setup_custom_dns():
     カスタムDNSリゾルバを設定する非同期関数
     Google Public DNSを使用してDNS解決を行う
     """
-    gpd = ['8.8.8.8', '8.8.4.4']
+    gpd = ["8.8.8.8", "8.8.4.4"]
     resolver = aiodns.DNSResolver(nameservers=gpd)
     connector = TCPConnector(resolver=resolver)
     session = ClientSession(connector=connector)

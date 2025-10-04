@@ -10,6 +10,7 @@ from datetime import datetime, date
 from config import CACHE_DIR, REFERENCE_DATA_DEFAULT_LABEL, debug
 from database.connection import run_db_query
 
+
 def _ensure_cache_dir() -> None:
     """cacheディレクトリを作成する"""
     try:
@@ -17,14 +18,15 @@ def _ensure_cache_dir() -> None:
     except Exception:
         pass
 
+
 def load_json_cache(path: str, default):
     """
     JSONキャッシュの読み込み
-    
+
     Args:
         path (str): ファイルパス
         default: 読み込み失敗時のデフォルト値
-    
+
     Returns:
         読み込んだデータ、または default
     """
@@ -36,14 +38,15 @@ def load_json_cache(path: str, default):
     except Exception:
         return default
 
+
 def save_json_cache(path: str, data) -> bool:
     """
     JSONキャッシュの保存
-    
+
     Args:
         path (str): ファイルパス
         data: 保存するデータ
-    
+
     Returns:
         bool: 成功時True、失敗時False
     """
@@ -58,10 +61,11 @@ def save_json_cache(path: str, data) -> bool:
             print(f"cache保存失敗: {path}: {e}")
         return False
 
+
 def get_reference_data_label() -> str:
     """
     config.dblastupdateの値を参照ラベルとして取得する
-    
+
     Returns:
         str: 参照データのラベル（例: "-# 参照データ:2025/10/1まで"）
     """

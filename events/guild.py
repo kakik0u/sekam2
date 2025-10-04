@@ -8,49 +8,48 @@ import discord
 def setup_guild_events(client):
     """
     on_guild_join イベントを登録
-    
+
     Args:
         client: Discord Client インスタンス
     """
+
     @client.event
     async def on_guild_join(guild):
         owner = guild.owner
         greeting_message = (
-            f"こんにちは、SEKAM2です。\n"
-            f"サーバーへの採用ありがとうございます。\n"
-            f"説明が必要な機能が3つあるので説明させてください。"
+            "こんにちは、SEKAM2です。\n"
+            "サーバーへの採用ありがとうございます。\n"
+            "説明が必要な機能が3つあるので説明させてください。"
         )
-        
+
         embed = discord.Embed(
             title="検出ログ機能",
-            description="サーバーの入室者が専科民かどうかを逐一報告する機能です。"
+            description="サーバーの入室者が専科民かどうかを逐一報告する機能です。",
         )
         embed.add_field(
             name="設定方法",
             value="/setting log コマンドをサーバー内で実行し、ログを送信するチャンネルを選択します。(ユーザーに見られないところで実行したほうがいいかも？)",
-            inline=True
+            inline=True,
         )
-        
+
         embed2 = discord.Embed(
-            title="BAN機能",
-            description="スパムの処し方を選べます。"
+            title="BAN機能", description="スパムの処し方を選べます。"
         )
         embed2.add_field(
             name="設定方法",
             value="/setting ban コマンドをサーバー内で実行し、処理を選びます(キックかBANか)。",
-            inline=True
+            inline=True,
         )
-        
+
         embed3 = discord.Embed(
-            title="ブラックリスト機能",
-            description="国際指名手配機能をオフにできます"
+            title="ブラックリスト機能", description="国際指名手配機能をオフにできます"
         )
         embed3.add_field(
             name="設定方法",
             value="/setting blacklist コマンドをサーバー内で実行し、ONかOFFを選びます(初期設定ではオン)。",
-            inline=True
+            inline=True,
         )
-        
+
         try:
             await owner.send(content=greeting_message, embeds=[embed, embed2, embed3])
             await owner.send(
@@ -66,4 +65,6 @@ def setup_guild_events(client):
             )
             print(f"サーバー {guild.name} のオーナー {owner.name} にDMを送信しました。")
         except discord.HTTPException:
-            print(f"サーバー {guild.name} のオーナー {owner.name} にDMを送信できませんでした。")
+            print(
+                f"サーバー {guild.name} のオーナー {owner.name} にDMを送信できませんでした。"
+            )

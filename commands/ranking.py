@@ -1,6 +1,7 @@
 """
 ランキング関連のコマンド群
 """
+
 import discord
 from discord import app_commands
 
@@ -14,9 +15,11 @@ import config
 from datetime import datetime, timedelta
 
 
-async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord.Client):
+async def setup_ranking_commands(
+    tree: app_commands.CommandTree, client: discord.Client
+):
     """ランキングコマンドを登録"""
-    
+
     @tree.command(name="grinrank", description="おもしろ専科民ランキング")
     @app_commands.allowed_installs(guilds=True, users=True)
     async def grinrank(ctx: discord.Interaction):
@@ -25,13 +28,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         print(f"grinrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/grinrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
 
@@ -46,8 +53,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 )
                 grin_rows = run_statdb_query(sql, (), fetch="all") or []
                 try:
-                    grin_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                  int(r[1]) if r and r[1] is not None else 0] for r in grin_rows]
+                    grin_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in grin_rows
+                    ]
                 except Exception:
                     grin_rows = []
                 save_json_cache("grinrank.json", grin_rows)
@@ -67,42 +79,71 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     break
 
             if total > 0 and has_user:
-                outrank = sum(1 for r in grin_rows if (int(r[1]) if r[1] is not None else 0) < grincount)
+                outrank = sum(
+                    1
+                    for r in grin_rows
+                    if (int(r[1]) if r[1] is not None else 0) < grincount
+                )
                 percent = int(outrank * 100 / total)
             else:
                 percent = 0
 
             if total == 0 or not has_user:
-                embed = discord.Embed(title=f"ランク外、0個の:grin:")
-                embed.description = f"対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:grin:ランキング\n{reference_label}", embed=embed)
+                embed = discord.Embed(title="ランク外、0個の:grin:")
+                embed.description = "対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+                )
                 return
 
-            greater = sum(1 for r in grin_rows if (int(r[1]) if r[1] is not None else 0) > grincount)
+            greater = sum(
+                1
+                for r in grin_rows
+                if (int(r[1]) if r[1] is not None else 0) > grincount
+            )
             rank = greater + 1
 
             if rank == 37:
-                embed = discord.Embed(title=f"おもしろ専科民ランキング{rank}位/{grincount}個の:grin:")
+                embed = discord.Embed(
+                    title=f"おもしろ専科民ランキング{rank}位/{grincount}個の:grin:"
+                )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山だ。"
                 embed.set_image(url="https://death.kakikou.app/sekam/senka37.gif")
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:grin:ランキング\n{reference_label}", embed=embed)
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+                )
                 return
 
             embed = discord.Embed(title=f"{rank}位/{grincount}個の:grin:")
             embed.description = f"ユーザーの{percent}%を上回っています。"
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}の:grin:ランキング\n{reference_label}", embed=embed)
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+            )
             insert_command_log(ctx, "/grinrank", "OK")
         except Exception as e:
             if config.debug:
                 print(f"grinrankエラー: {e}")
             insert_command_log(ctx, "/grinrank", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
     @tree.command(name="allrank", description="すべてのリアクションの合計ランキング")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -112,13 +153,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         print(f"allrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/allrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
 
@@ -134,8 +179,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 all_rows = run_statdb_query(sql, (), fetch="all") or []
                 # JSON シリアライズ可能形式へ
                 try:
-                    all_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                 int(r[1]) if r and r[1] is not None else 0] for r in all_rows]
+                    all_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in all_rows
+                    ]
                 except Exception:
                     all_rows = []
                 save_json_cache("allrank.json", all_rows)
@@ -155,43 +205,74 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     break
 
             if total > 0 and has_user:
-                outrank = sum(1 for r in all_rows if (int(r[1]) if r[1] is not None else 0) < mycount)
+                outrank = sum(
+                    1
+                    for r in all_rows
+                    if (int(r[1]) if r[1] is not None else 0) < mycount
+                )
                 percent = int(outrank * 100 / total)
             else:
                 percent = 0
 
             if total == 0 or not has_user:
-                embed = discord.Embed(title=f"ランク外、0個のリアクション")
-                embed.description = f"対象期間内にデータがありませんでした。\n無味乾燥なメッセージ。"
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}のリアクションランキング\n{reference_label}", embed=embed)
+                embed = discord.Embed(title="ランク外、0個のリアクション")
+                embed.description = (
+                    "対象期間内にデータがありませんでした。\n無味乾燥なメッセージ。"
+                )
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}のリアクションランキング\n{reference_label}",
+                    embed=embed,
+                )
                 return
 
             # 標準競技順位（同率で飛び番）: 自分より大きい件数 + 1
-            greater = sum(1 for r in all_rows if (int(r[1]) if r[1] is not None else 0) > mycount)
+            greater = sum(
+                1 for r in all_rows if (int(r[1]) if r[1] is not None else 0) > mycount
+            )
             rank = greater + 1
 
             if rank == 37:
-                embed = discord.Embed(title=f"反応されまくりランキング{rank}位/{mycount}個のリアクション")
+                embed = discord.Embed(
+                    title=f"反応されまくりランキング{rank}位/{mycount}個のリアクション"
+                )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山のうちの一人だ。"
                 embed.set_image(url="https://death.kakikou.app/sekam/senka37.gif")
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}のリアクションランキング\n{reference_label}", embed=embed)
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}のリアクションランキング\n{reference_label}",
+                    embed=embed,
+                )
                 return
 
             embed = discord.Embed(title=f"{rank}位/{mycount}個のリアクション")
             embed.description = f"ユーザーの{percent}%を上回っています。"
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}のリアクションランキング\n{reference_label}", embed=embed)
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}のリアクションランキング\n{reference_label}", embed=embed
+            )
             insert_command_log(ctx, "/allrank", "OK")
         except Exception as e:
             if config.debug:
                 print(f"allrankエラー: {e}")
             insert_command_log(ctx, "/allrank", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
     @tree.command(name="truthgrinrank", description="本当におもしろい専科民ランキング")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -201,13 +282,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         print(f"truthgrinrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/truthgrinrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
 
@@ -226,8 +311,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 truth_rows = run_statdb_query(sql_truth, (), fetch="all") or []
                 # JSON化
                 try:
-                    truth_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                   int(r[1]) if r and r[1] is not None else 0] for r in truth_rows]
+                    truth_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in truth_rows
+                    ]
                 except Exception:
                     truth_rows = []
                 save_json_cache("truthgrinrank.json", truth_rows)
@@ -247,11 +337,21 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     has_truth_user = True
                     break
             if total_truth > 0 and has_truth_user:
-                outrank = sum(1 for r in truth_rows if (int(r[1]) if r[1] is not None else 0) < truth_count)
+                outrank = sum(
+                    1
+                    for r in truth_rows
+                    if (int(r[1]) if r[1] is not None else 0) < truth_count
+                )
                 truth_percent = int(outrank * 100 / total_truth)
             else:
                 truth_percent = 0
-            truth_rank = (sum(1 for r in truth_rows if (int(r[1]) if r[1] is not None else 0) > truth_count)) + 1
+            truth_rank = (
+                sum(
+                    1
+                    for r in truth_rows
+                    if (int(r[1]) if r[1] is not None else 0) > truth_count
+                )
+            ) + 1
 
             # grin集計（受け取り側）をキャッシュ/参照
             grin_rows = load_json_cache("grinrank.json", [])
@@ -264,8 +364,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 )
                 grin_rows = run_statdb_query(sql_grin, (), fetch="all") or []
                 try:
-                    grin_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                  int(r[1]) if r and r[1] is not None else 0] for r in grin_rows]
+                    grin_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in grin_rows
+                    ]
                 except Exception:
                     grin_rows = []
                 save_json_cache("grinrank.json", grin_rows)
@@ -281,7 +386,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     break
 
             # truth / grin の比率（0割りを避ける）
-            ratio_percent = int((truth_count * 100) / grin_count) if grin_count > 0 else 0
+            ratio_percent = (
+                int((truth_count * 100) / grin_count) if grin_count > 0 else 0
+            )
 
             # モノホン最多メッセージ（URLやwww.を含むものは除外）
             sql = (
@@ -306,7 +413,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
             if truth_rank == 37:
                 # エンベッド構築
                 title = f"本物のおもしろ専科民ランキング{truth_rank}位/{truth_count}個の:grin:"
-                desc = f"\"モノホンの:grin:\"においては、ユーザーの{truth_percent}%上回ってます\nお前が本物の恐山だ！！！"
+                desc = f'"モノホンの:grin:"においては、ユーザーの{truth_percent}%上回ってます\nお前が本物の恐山だ！！！'
 
                 embed = discord.Embed(title=title, description=desc)
                 embed.set_image(url="https://death.kakikou.app/sekam/realgrin37.gif")
@@ -317,9 +424,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     f"人の:grin: : {max(grin_count - truth_count, 0)}個",
                     f"全体 :grin: : {grin_count}個",
                     "",
-                    f"__{ratio_percent}%が\"モノホン\"の:grin:です__",
+                    f'__{ratio_percent}%が"モノホン"の:grin:です__',
                 ]
-                embed.add_field(name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False)
+                embed.add_field(
+                    name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False
+                )
 
                 # Field2: モノホン最多メッセージ
                 if top_truth_row:
@@ -327,21 +436,32 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     channel_id = top_truth_row[2]
                     content = top_truth_row[3] if top_truth_row[3] is not None else ""
                     link = f"https://discord.com/channels/518371205452005387/{channel_id}/{message_id}"
-                    field2_desc = (content if content.strip() != "" else "画像のみ") + f"\n[メッセージにジャンプ]({link})"
+                    field2_desc = (
+                        content if content.strip() != "" else "画像のみ"
+                    ) + f"\n[メッセージにジャンプ]({link})"
                 else:
                     field2_desc = "対象のメッセージが見つかりませんでした。"
-                embed.add_field(name="モノホンの:grin:最多メッセージ:", value=field2_desc, inline=False)
+                embed.add_field(
+                    name="モノホンの:grin:最多メッセージ:",
+                    value=field2_desc,
+                    inline=False,
+                )
 
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
 
-                header = f"{username}の**\"モノホン\"**:grin:統計\n{reference_label}"
+                header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
                 await ctx.followup.send(header, embed=embed)
                 insert_command_log(ctx, "/truthgrinrank", "OK")
                 return
 
             # エンベッド構築
             title = f"{truth_rank}位/{truth_count}個の:grin:"
-            desc = f"\"モノホンの:grin:\"においては、ユーザーの{truth_percent}%上回ってます"
+            desc = (
+                f'"モノホンの:grin:"においては、ユーザーの{truth_percent}%上回ってます'
+            )
 
             embed = discord.Embed(title=title, description=desc)
 
@@ -351,9 +471,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 f"人の:grin: : {max(grin_count - truth_count, 0)}個",
                 f"全体 :grin: : {grin_count}個",
                 "",
-                f"__{ratio_percent}%が\"モノホン\"の:grin:です__",
+                f'__{ratio_percent}%が"モノホン"の:grin:です__',
             ]
-            embed.add_field(name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False)
+            embed.add_field(
+                name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False
+            )
 
             # Field2: モノホン最多メッセージ
             if top_truth_row:
@@ -361,14 +483,21 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 channel_id = top_truth_row[2]
                 content = top_truth_row[3] if top_truth_row[3] is not None else ""
                 link = f"https://discord.com/channels/518371205452005387/{channel_id}/{message_id}"
-                field2_desc = (content if content.strip() != "" else "画像のみ") + f"\n[メッセージにジャンプ]({link})"
+                field2_desc = (
+                    content if content.strip() != "" else "画像のみ"
+                ) + f"\n[メッセージにジャンプ]({link})"
             else:
                 field2_desc = "対象のメッセージが見つかりませんでした。"
-            embed.add_field(name="モノホンの:grin:最多メッセージ:", value=field2_desc, inline=False)
+            embed.add_field(
+                name="モノホンの:grin:最多メッセージ:", value=field2_desc, inline=False
+            )
 
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
 
-            header = f"{username}の**\"モノホン\"**:grin:統計\n{reference_label}"
+            header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
             await ctx.followup.send(header, embed=embed)
             insert_command_log(ctx, "/truthgrinrank", "OK")
         except Exception as e:
@@ -376,9 +505,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 print(f"truthgrinrankエラー: {e}")
             insert_command_log(ctx, "/truthgrinrank", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
     @tree.command(name="maxgrin", description="最多:grin:投稿を教えますよ")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -388,13 +521,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         print(f"maxgrinコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/maxgrin", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
 
@@ -415,7 +552,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
             row = run_statdb_query(sql, (uid,), fetch="one")
 
             if not row:
-                await ctx.followup.send("対象のメッセージが見つかりませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    "対象のメッセージが見つかりませんでした。", ephemeral=True
+                )
                 return
 
             message_id = row[0]
@@ -424,8 +563,12 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
 
             # 画像を取得（attachmentsテーブルから）
             attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
-            attachment_row = run_statdb_query(attachment_sql, (message_id,), fetch="one")
-            image_url = attachment_row[0] if attachment_row and attachment_row[0] else None
+            attachment_row = run_statdb_query(
+                attachment_sql, (message_id,), fetch="one"
+            )
+            image_url = (
+                attachment_row[0] if attachment_row and attachment_row[0] else None
+            )
 
             # 表示文言（Twitter/Xリンクが含まれる場合は表題を変更）
             base_title = f"{username}の最多:grin:獲得メッセージ"
@@ -443,8 +586,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
             embed = discord.Embed(title="メッセージに移動", url=link, description=desc)
             if image_url:
                 embed.set_image(url=image_url)
-            
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
 
             await ctx.followup.send(base_title, embed=embed)
             insert_command_log(ctx, "/maxgrin", "OK")
@@ -453,9 +599,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 print(f"maxgrinエラー: {e}")
             insert_command_log(ctx, "/maxgrin", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
     @tree.command(name="grinper", description="打率")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -465,13 +615,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         print(f"grinperコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/grinper", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
 
             # 総メッセージ数
@@ -480,7 +634,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 "FROM messages WHERE author_id = %s GROUP BY author_id"
             )
             row_total = run_statdb_query(sql_total, (uid,), fetch="one")
-            total_messages = int(row_total[1]) if row_total and row_total[1] is not None else 0
+            total_messages = (
+                int(row_total[1]) if row_total and row_total[1] is not None else 0
+            )
 
             # grinが付いたメッセージ数（重複message_idを除外）
             sql_grin = (
@@ -490,46 +646,72 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 "GROUP BY m.author_id"
             )
             row_grin = run_statdb_query(sql_grin, (uid,), fetch="one")
-            message_count_with_grin = int(row_grin[1]) if row_grin and row_grin[1] is not None else 0
+            message_count_with_grin = (
+                int(row_grin[1]) if row_grin and row_grin[1] is not None else 0
+            )
 
-            percent = (message_count_with_grin * 100.0 / total_messages) if total_messages > 0 else 0.0
+            percent = (
+                (message_count_with_grin * 100.0 / total_messages)
+                if total_messages > 0
+                else 0.0
+            )
             title_percent = f"{percent:.1f}%"
 
             embed = discord.Embed(title=title_percent)
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}の:grin:打率\n{get_reference_data_label()}", embed=embed)
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}の:grin:打率\n{get_reference_data_label()}", embed=embed
+            )
             insert_command_log(ctx, "/grinper", "OK")
         except Exception as e:
             if config.debug:
                 print(f"grinperエラー: {e}")
             insert_command_log(ctx, "/grinper", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
-    @tree.command(name="maxreaction", description="指定したリアクションを最も多く受け取ったメッセージを表示")
+    @tree.command(
+        name="maxreaction",
+        description="指定したリアクションを最も多く受け取ったメッセージを表示",
+    )
     @app_commands.allowed_installs(guilds=True, users=True)
     async def maxreaction(ctx: discord.Interaction, reaction: str):
         """指定した絵文字を最も多く受け取ったメッセージを表示（/maxgrinの絵文字指定版）"""
         if await enforce_zichi_block(ctx, "/maxreaction"):
             return
-        print(f"maxreactionコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), reaction={reaction}")
+        print(
+            f"maxreactionコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), reaction={reaction}"
+        )
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/maxreaction", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
 
             base_name, tone_variants = normalize_emoji_and_variants(reaction)
             if not base_name or not tone_variants:
-                await ctx.followup.send("絵文字（または絵文字名）を判別できませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                )
                 insert_command_log(ctx, "/maxreaction", "INVALID_EMOJI")
                 return
 
@@ -553,7 +735,10 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
             row = run_statdb_query(sql, params, fetch="one")
 
             if not row:
-                await ctx.followup.send(f":{base_name}:を受け取ったメッセージが見つかりませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    f":{base_name}:を受け取ったメッセージが見つかりませんでした。",
+                    ephemeral=True,
+                )
                 insert_command_log(ctx, "/maxreaction", "NO_DATA")
                 return
 
@@ -564,10 +749,16 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
 
             # 画像を取得（attachmentsテーブルから）
             attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
-            attachment_row = run_statdb_query(attachment_sql, (message_id,), fetch="one")
-            image_url = attachment_row[0] if attachment_row and attachment_row[0] else None
+            attachment_row = run_statdb_query(
+                attachment_sql, (message_id,), fetch="one"
+            )
+            image_url = (
+                attachment_row[0] if attachment_row and attachment_row[0] else None
+            )
 
-            base_title = f"{username}の最多:{base_name}:獲得メッセージ ({total_count}個)"
+            base_title = (
+                f"{username}の最多:{base_name}:獲得メッセージ ({total_count}個)"
+            )
             lowered = content.lower()
             if ("twitter.com" in lowered) or ("x.com" in lowered):
                 base_title += "(人のツイート)"
@@ -579,8 +770,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
             embed = discord.Embed(title="メッセージに移動", url=link, description=desc)
             if image_url:
                 embed.set_image(url=image_url)
-            
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
 
             await ctx.followup.send(base_title, embed=embed)
             insert_command_log(ctx, "/maxreaction", "OK")
@@ -589,9 +783,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 print(f"maxreactionエラー: {e}")
             insert_command_log(ctx, "/maxreaction", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
     @tree.command(name="airank", description="AI部門のリアクションランキングを表示")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -599,89 +797,101 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
         emoji="リアクション絵文字（例: 👍 または grin）",
         before="この日付より前（YYYY-MM-DD形式、この日は含まない）",
         after="この日付より後（YYYY-MM-DD形式、この日は含まない）",
-        page="ページ番号（1ページ目=1-10件、2ページ目=11-20件）"
+        page="ページ番号（1ページ目=1-10件、2ページ目=11-20件）",
     )
     async def airank(
         ctx: discord.Interaction,
         emoji: str,
         before: str = None,
         after: str = None,
-        page: int = 1
+        page: int = 1,
     ):
         """AI部門の特定リアクションを最も多く獲得したメッセージのランキングを表示"""
         # ユーザーID制限: 668479297551466516 のみ許可
         if ctx.user.id != 668479297551466516:
-            await ctx.response.send_message("このコマンドの実行権限がありません。", ephemeral=True)
+            await ctx.response.send_message(
+                "このコマンドの実行権限がありません。", ephemeral=True
+            )
             insert_command_log(ctx, "/airank", "DENY_PERMISSION")
             return
-        
+
         if await enforce_zichi_block(ctx, "/airank"):
             return
-        
-        print(f"airankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), emoji={emoji}, before={before}, after={after}, page={page}")
-        
+
+        print(
+            f"airankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), emoji={emoji}, before={before}, after={after}, page={page}"
+        )
+
         try:
             await ctx.response.defer()
-            
+
             # 絵文字の正規化
             base_name, tone_variants = normalize_emoji_and_variants(emoji)
             if not base_name or not tone_variants:
-                await ctx.followup.send("絵文字（または絵文字名）を判別できませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                )
                 insert_command_log(ctx, "/airank", "INVALID_EMOJI")
                 return
-            
+
             # 日付のバリデーション
             before_date = None
             after_date = None
-            
+
             if before:
                 try:
                     before_date = datetime.strptime(before, "%Y-%m-%d")
                 except ValueError:
-                    await ctx.followup.send("beforeの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。", ephemeral=True)
+                    await ctx.followup.send(
+                        "beforeの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。",
+                        ephemeral=True,
+                    )
                     insert_command_log(ctx, "/airank", "INVALID_BEFORE_DATE")
                     return
-            
+
             if after:
                 try:
                     after_date = datetime.strptime(after, "%Y-%m-%d")
                 except ValueError:
-                    await ctx.followup.send("afterの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。", ephemeral=True)
+                    await ctx.followup.send(
+                        "afterの日付フォーマットが不正です。YYYY-MM-DD形式で指定してください。",
+                        ephemeral=True,
+                    )
                     insert_command_log(ctx, "/airank", "INVALID_AFTER_DATE")
                     return
-            
+
             # ページ番号のバリデーション
             if page < 1:
                 page = 1
-            
+
             # SQLクエリの構築
             # emoji_nameで絞り込み + before/after条件 + 添付ファイルまたはsora.chatgpt.com含有チェック
             placeholders = ", ".join(["%s"] * len(tone_variants))
             params = list(tone_variants)
-            
+
             where_conditions = [f"r.emoji_name IN ({placeholders})"]
-            
+
             # before条件（before日付を含まない: < before）
             if before_date:
                 where_conditions.append("m.timestamp < %s")
                 params.append(before_date)
-            
+
             # after条件（after日付を含まない: > after）
             if after_date:
                 where_conditions.append("m.timestamp > %s")
                 params.append(after_date)
-            
+
             # 添付ファイルがあるか、sora.chatgpt.comを含むメッセージのみ
             where_conditions.append(
                 "(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id) "
                 "OR m.content LIKE '%%sora.chatgpt.com%%')"
             )
-            
+
             where_clause = " AND ".join(where_conditions)
-            
+
             # ページネーション: LIMIT 10 OFFSET (page-1)*10
             offset = (page - 1) * 10
-            
+
             sql = f"""
                 SELECT 
                     m.id as message_id,
@@ -696,43 +906,51 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 LIMIT 10 OFFSET %s
             """
             params.append(offset)
-            
+
             rows = run_aidb_query(sql, tuple(params), fetch="all")
-            
+
             if not rows:
                 await ctx.followup.send(
                     f"指定された条件に一致するメッセージが見つかりませんでした。（ページ{page}）",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/airank", "NO_DATA")
                 return
-            
+
             # ヘッダーメッセージの構築
             header_parts = ["SEKAM統計所AI部", "専科AI動画", f":{base_name}:部門"]
-            
+
             # 期間ラベルの生成
             if before_date is None and after_date is None:
                 period_label = "総合ランキング"
             elif before_date and after_date:
                 # before-1とafter+1の日付を計算
                 after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
-                before_minus_one = (before_date - timedelta(days=1)).strftime("%Y/%m/%d")
-                
+                before_minus_one = (before_date - timedelta(days=1)).strftime(
+                    "%Y/%m/%d"
+                )
+
                 if after_plus_one == before_minus_one:
                     period_label = f"デイリーランキング:{after_plus_one}"
                 else:
-                    period_label = f"{after_plus_one}-{before_minus_one}期間のランキング"
+                    period_label = (
+                        f"{after_plus_one}-{before_minus_one}期間のランキング"
+                    )
             elif after_date:
                 after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
                 period_label = f"{after_plus_one}以降のランキング"
             else:  # before_date のみ
-                before_minus_one = (before_date - timedelta(days=1)).strftime("%Y/%m/%d")
+                before_minus_one = (before_date - timedelta(days=1)).strftime(
+                    "%Y/%m/%d"
+                )
                 period_label = f"{before_minus_one}までのランキング"
-            
+
             header_parts.append(period_label)
-            header_parts.append("-# データは前日までのものです。リアクション数は流動します。")
+            header_parts.append(
+                "-# データは前日までのものです。リアクション数は流動します。"
+            )
             header_message = "\n".join(header_parts)
-            
+
             # Embedの作成（最大10件）
             embeds = []
             for idx, row in enumerate(rows):
@@ -740,15 +958,21 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                 channel_id = row[1]
                 content = row[2] if row[2] is not None else ""
                 total_count = int(row[3]) if row[3] is not None else 0
-                
+
                 # 添付ファイルの取得
-                attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
-                attachment_row = run_aidb_query(attachment_sql, (message_id,), fetch="one")
-                image_url = attachment_row[0] if attachment_row and attachment_row[0] else None
-                
+                attachment_sql = (
+                    "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
+                )
+                attachment_row = run_aidb_query(
+                    attachment_sql, (message_id,), fetch="one"
+                )
+                image_url = (
+                    attachment_row[0] if attachment_row and attachment_row[0] else None
+                )
+
                 # ランク番号
                 rank = offset + idx + 1
-                
+
                 # 説明文（添付ファイルがある場合も考慮）
                 if content.strip() != "":
                     desc = content
@@ -756,40 +980,50 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: discord
                     desc = "Embedでの動画表示ができないため、代替案を模索中です。"
                 else:
                     desc = "（内容なし）"
-                
+
                 # メッセージリンク（サーバーID: 518371205452005387）
                 link = f"https://discord.com/channels/518371205452005387/{channel_id}/{message_id}"
-                
+
                 # Embed作成
                 embed = discord.Embed(
-                    title=f"{rank}位: メッセージに移動",
-                    url=link,
-                    description=desc
+                    title=f"{rank}位: メッセージに移動", url=link, description=desc
                 )
-                embed.add_field(name="リアクション数", value=f":{base_name}: × {total_count}", inline=False)
-                
+                embed.add_field(
+                    name="リアクション数",
+                    value=f":{base_name}: × {total_count}",
+                    inline=False,
+                )
+
                 # 添付ファイル（画像）を設定
                 if image_url:
                     embed.set_image(url=image_url)
-                
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
+
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
                 embeds.append(embed)
-            
+
             # ヘッダーメッセージと全てのEmbedを1つのメッセージで送信（最大10個まで）
             await ctx.followup.send(header_message, embeds=embeds)
-            
+
             insert_command_log(ctx, "/airank", "OK")
-            
+
         except Exception as e:
             if config.debug:
                 print(f"airankエラー: {e}")
                 import traceback
+
                 traceback.print_exc()
             insert_command_log(ctx, "/airank", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
                 try:
-                    await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                    await ctx.response.send_message(
+                        "取得中にエラーが発生しました。", ephemeral=True
+                    )
                 except Exception:
                     pass

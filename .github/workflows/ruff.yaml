@@ -1,0 +1,38 @@
+name: Check with ruff
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up python
+        run: uv python install # .python-version に記載のバージョンがインストールされる
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run ruff check
+        run: uv run --frozen ruff check
+  
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up python
+        run: uv python install # .python-version に記載のバージョンがインストールされる
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras --dev
+
+      - name: Run ruff format
+        run: uv run --frozen ruff format --check

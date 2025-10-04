@@ -4,7 +4,7 @@ on_ready イベントハンドラ
 
 import discord
 
-from bot import setup_custom_dns, tree
+from bot import setup_custom_dns
 from fileutil import loadtxt
 
 

@@ -3,7 +3,6 @@
 絵文字名の正規化とUnicode変換
 """
 
-import os
 import json
 
 from config import TONE_SUFFIX_RE, SPECIAL_OK, EMOJI_JSON_PATH, debug, _CUSTOM_EMOJI_RE

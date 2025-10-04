@@ -10,7 +10,7 @@ from discord.app_commands import guild_only, allowed_contexts, allowed_installs
 
 from core.zichi import enforce_zichi_block
 from core.log import insert_command_log
-from spam.settings import get_setting_value, set_setting_value
+from spam.settings import set_setting_value
 
 
 async def setup_settings_commands(tree, client):

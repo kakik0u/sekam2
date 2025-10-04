@@ -89,8 +89,8 @@ async def setup_ranking_commands(
                 percent = 0
 
             if total == 0 or not has_user:
-                embed = discord.Embed(title=f"ランク外、0個の:grin:")
-                embed.description = f"対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
+                embed = discord.Embed(title="ランク外、0個の:grin:")
+                embed.description = "対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
                     icon_url="https://d.kakikou.app/sekam2logo.png",
@@ -215,9 +215,9 @@ async def setup_ranking_commands(
                 percent = 0
 
             if total == 0 or not has_user:
-                embed = discord.Embed(title=f"ランク外、0個のリアクション")
+                embed = discord.Embed(title="ランク外、0個のリアクション")
                 embed.description = (
-                    f"対象期間内にデータがありませんでした。\n無味乾燥なメッセージ。"
+                    "対象期間内にデータがありませんでした。\n無味乾燥なメッセージ。"
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",

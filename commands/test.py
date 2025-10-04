@@ -479,7 +479,6 @@ def get_period_rankings(user_id: int) -> dict:
 
                 daily_start = end_date - timedelta(days=1)
                 weekly_start = end_date - timedelta(days=7)
-                monthly_start = end_date - timedelta(days=30)
 
                 for timestamp, count in messages:
                     monthly_count += count
@@ -507,7 +506,7 @@ def get_period_rankings(user_id: int) -> dict:
                         ensure_ascii=False,
                     )
                 if debug:
-                    print(f"[Cache] 期間別ランキングをキャッシュに保存")
+                    print("[Cache] 期間別ランキングをキャッシュに保存")
             except Exception as e:
                 if debug:
                     print(f"[Cache] キャッシュ保存エラー: {e}")
@@ -569,7 +568,6 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
         font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
         normal_font_path = os.path.join(font_dir, "UDShingoL.otf")
         light_font_path = os.path.join(font_dir, "UDShingoL.otf")
-        emoji_font_path = os.path.join(font_dir, "twiemoji.ttf")
 
         # グラフを生成
         graph_start = time.time()
@@ -604,7 +602,7 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
         print(f"[Timer] - グラフ貼付: {time.time() - paste_start:.3f}秒")
 
         # テキストを描画
-        draw = ImageDraw.Draw(bg)
+        _draw = ImageDraw.Draw(bg)
 
         font_load_start = time.time()
         try:
@@ -613,7 +611,6 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
             font_72 = ImageFont.truetype(normal_font_path, 72)
             font_60 = ImageFont.truetype(normal_font_path, 60)
             font_48 = ImageFont.truetype(normal_font_path, 48)
-            font_30 = ImageFont.truetype(light_font_path, 30)
             font_24 = ImageFont.truetype(light_font_path, 24)  # 参照データ用に追加
         except Exception:
             # フォールバック
@@ -621,7 +618,6 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
             font_72 = ImageFont.load_default()
             font_60 = ImageFont.load_default()
             font_48 = ImageFont.load_default()
-            font_30 = ImageFont.load_default()
             font_24 = ImageFont.load_default()
         print(f"[Timer] - フォント読込: {time.time() - font_load_start:.3f}秒")
 
@@ -766,7 +762,7 @@ def create_daily_graph(dates: list, grin_counts: list, batting_avgs: list) -> st
 
         # 棒グラフ（grin数）
         x_positions = range(len(date_labels))
-        bars = ax1.bar(
+        _bars = ax1.bar(
             x_positions, grin_counts, color="#5865F2", width=0.6, label="Grin数"
         )
         ax1.set_xlabel("日付", color="white")
@@ -780,7 +776,7 @@ def create_daily_graph(dates: list, grin_counts: list, batting_avgs: list) -> st
 
         # 第2Y軸（打率）
         ax2 = ax1.twinx()
-        line = ax2.plot(
+        _line = ax2.plot(
             x_positions,
             batting_avgs,
             color="#ED4245",

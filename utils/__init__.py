@@ -17,11 +17,11 @@ from .emoji import (
 )
 
 __all__ = [
-    'load_json_cache',
-    'save_json_cache',
-    'get_reference_data_label',
-    'strip_tone_modifiers',
-    'normalize_emoji_name',
-    'normalize_emoji_and_variants',
-    'emoji_name_to_unicode',
+    "load_json_cache",
+    "save_json_cache",
+    "get_reference_data_label",
+    "strip_tone_modifiers",
+    "normalize_emoji_name",
+    "normalize_emoji_and_variants",
+    "emoji_name_to_unicode",
 ]

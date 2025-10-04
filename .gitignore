@@ -1,6 +1,6 @@
 .DS_Store
 .env
-.venv/*
+.venv
 archive/*
 cache/*
 docs/*
@@ -11,3 +11,5 @@ spamer.txt
 discord-emojis.pretty.json
 database/*
 newgrinui.png
+
+.ruff_cache

@@ -30,7 +30,17 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 
 REFERENCE_DATA_DEFAULT_LABEL = "-# 参照データ:更新日不明"
 
-SPECIAL_OK = {"__", "bi", "e_", "ebi", "ebisushi", "kanji", "mo", "pineappleman", "ebing"}
+SPECIAL_OK = {
+    "__",
+    "bi",
+    "e_",
+    "ebi",
+    "ebisushi",
+    "kanji",
+    "mo",
+    "pineappleman",
+    "ebing",
+}
 
 TONE_SUFFIX_RE = re.compile(
     r"_(?:tone[1-5]|light_skin_tone|medium_light_skin_tone|medium_skin_tone|"

@@ -1,6 +1,7 @@
 """
 リアクション統計関連のコマンド群
 """
+
 import discord
 from discord import app_commands
 
@@ -13,9 +14,11 @@ from utils.emoji import normalize_emoji_and_variants
 import config
 
 
-async def setup_reaction_commands(tree: app_commands.CommandTree, client: discord.Client):
+async def setup_reaction_commands(
+    tree: app_commands.CommandTree, client: discord.Client
+):
     """リアクション統計コマンドを登録"""
-    
+
     @tree.command(name="reactionrank", description="リアクションのランキング")
     @app_commands.allowed_installs(guilds=True, users=True)
     async def reactionrank(ctx: discord.Interaction, reaction: str):
@@ -23,18 +26,24 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             return
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/reactionrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
 
             base_name, tone_variants = normalize_emoji_and_variants(reaction)
             if not base_name or not tone_variants:
-                await ctx.followup.send("絵文字（または絵文字名）を判別できませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                )
                 return
 
             cache = load_json_cache("reaction.json", {})
@@ -52,8 +61,13 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
                 )
                 rows = run_statdb_query(sql, tuple(tone_variants), fetch="all") or []
                 try:
-                    serial_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                    int(r[1]) if r and r[1] is not None else 0] for r in rows]
+                    serial_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in rows
+                    ]
                 except Exception:
                     serial_rows = []
                 cache[base_name] = serial_rows
@@ -74,8 +88,14 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
 
             if not has_user or my_total <= 0:
                 embed = discord.Embed(title=f"ランク外、0個の:{base_name}:")
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}", embed=embed)
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
+                    embed=embed,
+                )
                 return
 
             greater = 0
@@ -89,45 +109,73 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             rank = greater + 1
 
             if rank == 37:
-                embed = discord.Embed(title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:")
+                embed = discord.Embed(
+                    title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:"
+                )
                 embed.set_image(url="https://death.kakikou.app/sekam/something37.gif")
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}", embed=embed)
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
+                    embed=embed,
+                )
                 insert_command_log(ctx, "/reactionrank", f"37")
                 return
             embed = discord.Embed(title=f"{rank}位/{my_total}個の:{base_name}:")
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}", embed=embed)
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
+                embed=embed,
+            )
             insert_command_log(ctx, "/reactionrank", f"OK")
         except Exception as e:
             if config.debug:
                 print(f"reactionrankエラー: {e}")
             insert_command_log(ctx, "/reactionrank", f"ERROR:{e}")
             try:
-                await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.followup.send(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
             except Exception:
-                await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                await ctx.response.send_message(
+                    "取得中にエラーが発生しました。", ephemeral=True
+                )
 
-    @tree.command(name="givereactionrank", description="人にあげたリアクションのランキング")
+    @tree.command(
+        name="givereactionrank", description="人にあげたリアクションのランキング"
+    )
     @app_commands.allowed_installs(guilds=True, users=True)
     async def givereactionrank(ctx: discord.Interaction, reaction: str):
-        print(f"givereactionrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
+        print(
+            f"givereactionrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id})"
+        )
         if await enforce_zichi_block(ctx, "/givereactionrank"):
             return
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/givereactionrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(user, "display_name", None) or getattr(user, "name", str(user))
+            username = getattr(user, "display_name", None) or getattr(
+                user, "name", str(user)
+            )
             uid = int(getattr(user, "id", 0) or 0)
 
             base_name, _tone_variants_unused = normalize_emoji_and_variants(reaction)
             if not base_name:
-                await ctx.followup.send("絵文字（または絵文字名）を判別できませんでした。", ephemeral=True)
+                await ctx.followup.send(
+                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                )
                 return
 
             cache = load_json_cache("give_reaction.json", {})
@@ -146,8 +194,13 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
                 )
                 rows = run_testdb_query(sql, (base_name,), fetch="all") or []
                 try:
-                    serial_rows = [[int(r[0]) if r and r[0] is not None else 0,
-                                    int(r[1]) if r and r[1] is not None else 0] for r in rows]
+                    serial_rows = [
+                        [
+                            int(r[0]) if r and r[0] is not None else 0,
+                            int(r[1]) if r and r[1] is not None else 0,
+                        ]
+                        for r in rows
+                    ]
                 except Exception:
                     serial_rows = []
                 cache[base_name] = serial_rows
@@ -168,9 +221,17 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
                     break
 
             if not has_user or my_total <= 0:
-                embed = discord.Embed(title=f"ランク外、:{base_name}:は一回もあげてません")
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}", embed=embed)
+                embed = discord.Embed(
+                    title=f"ランク外、:{base_name}:は一回もあげてません"
+                )
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}",
+                    embed=embed,
+                )
                 insert_command_log(ctx, "/givereactionrank", "NO_DATA")
                 return
             greater = 0
@@ -184,12 +245,22 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             rank = greater + 1
 
             if rank == 37:
-                embed = discord.Embed(title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:をあげました")
+                embed = discord.Embed(
+                    title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:をあげました"
+                )
                 embed.set_image(url="https://death.kakikou.app/sekam/something37.gif")
             else:
-                embed = discord.Embed(title=f"{rank}位/{my_total}個の:{base_name}:をあげました")
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}", embed=embed)
+                embed = discord.Embed(
+                    title=f"{rank}位/{my_total}個の:{base_name}:をあげました"
+                )
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}",
+                embed=embed,
+            )
             insert_command_log(ctx, "/givereactionrank", "OK")
         except Exception as e:
             if config.debug:
@@ -197,9 +268,13 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             insert_command_log(ctx, "/givereactionrank", f"ERROR:{e}")
             try:
                 if not ctx.response.is_done():
-                    await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                    await ctx.response.send_message(
+                        "取得中にエラーが発生しました。", ephemeral=True
+                    )
                 else:
-                    await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                    await ctx.followup.send(
+                        "取得中にエラーが発生しました。", ephemeral=True
+                    )
             except Exception:
                 pass
 
@@ -211,13 +286,17 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             return
         try:
             if not is_overload_allowed(ctx):
-                await ctx.response.send_message("現在過負荷対策により専科外では使えません", ephemeral=True)
+                await ctx.response.send_message(
+                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                )
                 insert_command_log(ctx, "/givegrinrank", "DENY_OVERLOAD")
                 return
             await ctx.response.defer()
 
             exec_user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
-            username = getattr(exec_user, "display_name", None) or getattr(exec_user, "name", str(exec_user))
+            username = getattr(exec_user, "display_name", None) or getattr(
+                exec_user, "name", str(exec_user)
+            )
             target_uid = int(getattr(exec_user, "id", 0) or 0)
             give_rows = load_json_cache("givegrinrank.json", [])
 
@@ -266,24 +345,50 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
                     break
 
             if total == 0 or not has_give:
-                embed = discord.Embed(title=f"誰にも笑ったことがないです。(0個の:grin:をあげました)")
-                embed.description = f"もらった:grin: : {grincount}個\nあげた:grin: : {givegrincount}個"
-                embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-                await ctx.followup.send(f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}", embed=embed)
+                embed = discord.Embed(
+                    title=f"誰にも笑ったことがないです。(0個の:grin:をあげました)"
+                )
+                embed.description = (
+                    f"もらった:grin: : {grincount}個\nあげた:grin: : {givegrincount}個"
+                )
+                embed.set_footer(
+                    text="SEKAM2 - SEKAMの2",
+                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                )
+                await ctx.followup.send(
+                    f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}",
+                    embed=embed,
+                )
                 insert_command_log(ctx, "/givegrinrank", "NO_DATA")
                 return
 
-            greater = sum(1 for r in give_rows if (int(r[1]) if r[1] is not None else 0) > givegrincount)
+            greater = sum(
+                1
+                for r in give_rows
+                if (int(r[1]) if r[1] is not None else 0) > givegrincount
+            )
             rank = greater + 1
 
             if rank == 37:
-                embed = discord.Embed(title=f"笑顔の専科民ランキング{rank}位/{givegrincount}個の:grin:をあげました！！")
+                embed = discord.Embed(
+                    title=f"笑顔の専科民ランキング{rank}位/{givegrincount}個の:grin:をあげました！！"
+                )
                 embed.set_image(url="https://death.kakikou.app/sekam/smile37.gif")
             else:
-                embed = discord.Embed(title=f"{rank}位/{givegrincount}個の:grin:をあげました")
-            embed.description = f"もらった:grin: : {grincount}個\nあげた:grin: : {givegrincount}個"
-            embed.set_footer(text="SEKAM2 - SEKAMの2", icon_url="https://d.kakikou.app/sekam2logo.png")
-            await ctx.followup.send(f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}", embed=embed)
+                embed = discord.Embed(
+                    title=f"{rank}位/{givegrincount}個の:grin:をあげました"
+                )
+            embed.description = (
+                f"もらった:grin: : {grincount}個\nあげた:grin: : {givegrincount}個"
+            )
+            embed.set_footer(
+                text="SEKAM2 - SEKAMの2",
+                icon_url="https://d.kakikou.app/sekam2logo.png",
+            )
+            await ctx.followup.send(
+                f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}",
+                embed=embed,
+            )
             insert_command_log(ctx, "/givegrinrank", "OK")
         except Exception as e:
             if config.debug:
@@ -291,8 +396,12 @@ async def setup_reaction_commands(tree: app_commands.CommandTree, client: discor
             insert_command_log(ctx, "/givegrinrank", f"ERROR:{e}")
             try:
                 if not ctx.response.is_done():
-                    await ctx.response.send_message("取得中にエラーが発生しました。", ephemeral=True)
+                    await ctx.response.send_message(
+                        "取得中にエラーが発生しました。", ephemeral=True
+                    )
                 else:
-                    await ctx.followup.send("取得中にエラーが発生しました。", ephemeral=True)
+                    await ctx.followup.send(
+                        "取得中にエラーが発生しました。", ephemeral=True
+                    )
             except Exception:
                 pass

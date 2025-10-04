@@ -25,7 +25,7 @@ __all__ = [
 async def setup_all_commands(tree, client):
     """
     すべてのコマンドを登録
-    
+
     Args:
         tree: Discord CommandTree インスタンス
         client: Discord Client インスタンス

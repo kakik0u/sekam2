@@ -18,7 +18,7 @@ __all__ = [
 def setup_all_events(client):
     """
     すべてのイベントハンドラを登録
-    
+
     Args:
         client: Discord Client インスタンス
     """

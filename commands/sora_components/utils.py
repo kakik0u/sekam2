@@ -152,7 +152,7 @@ def update_video_tags(message_id: int, tags: List[str], user_id: int) -> bool:
                     existing_tags = json.loads(existing[0])
                     if not isinstance(existing_tags, list):
                         existing_tags = []
-                except:
+                except Exception:
                     existing_tags = []
 
             # 新しいタグを追加（重複排除）

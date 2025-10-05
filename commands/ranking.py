@@ -2,17 +2,19 @@
 ランキング関連のコマンド群
 """
 
+from datetime import datetime, timedelta
+from urllib.parse import quote
+
 import discord
 from discord import app_commands
 
-from core.zichi import enforce_zichi_block
-from core.log import insert_command_log
-from spam.protection import is_overload_allowed
-from database.connection import run_statdb_query, run_aidb_query
-from utils.cache import load_json_cache, save_json_cache, get_reference_data_label
-from utils.emoji import normalize_emoji_and_variants
 import config
-from datetime import datetime, timedelta
+from core.log import insert_command_log
+from core.zichi import enforce_zichi_block
+from database.connection import run_aidb_query, run_statdb_query
+from spam.protection import is_overload_allowed
+from utils.cache import get_reference_data_label, load_json_cache, save_json_cache
+from utils.emoji import normalize_emoji_and_variants
 
 
 async def setup_ranking_commands(
@@ -797,7 +799,7 @@ async def setup_ranking_commands(
         emoji="リアクション絵文字（例: 👍 または grin）",
         before="この日付より前（YYYY-MM-DD形式、この日は含まない）",
         after="この日付より後（YYYY-MM-DD形式、この日は含まない）",
-        page="ページ番号（1ページ目=1-10件、2ページ目=11-20件）",
+        page="ページ番号（1ページ目=1-5件、2ページ目=6-10件）",
     )
     async def airank(
         ctx: discord.Interaction,
@@ -889,11 +891,11 @@ async def setup_ranking_commands(
 
             where_clause = " AND ".join(where_conditions)
 
-            # ページネーション: LIMIT 10 OFFSET (page-1)*10
-            offset = (page - 1) * 10
+            # ページネーション: LIMIT 5 OFFSET (page-1)*5
+            offset = (page - 1) * 5
 
             sql = f"""
-                SELECT 
+                SELECT
                     m.id as message_id,
                     m.channel_id,
                     m.content,
@@ -903,7 +905,7 @@ async def setup_ranking_commands(
                 WHERE {where_clause}
                 GROUP BY m.id, m.channel_id, m.content
                 ORDER BY total_reaction_count DESC
-                LIMIT 10 OFFSET %s
+                LIMIT 5 OFFSET %s
             """
             params.append(offset)
 
@@ -917,12 +919,9 @@ async def setup_ranking_commands(
                 insert_command_log(ctx, "/airank", "NO_DATA")
                 return
 
-            # ヘッダーメッセージの構築
-            header_parts = ["SEKAM統計所AI部", "専科AI動画", f":{base_name}:部門"]
-
-            # 期間ラベルの生成
+            # 期間ラベルの生成（ランキング形式のコメント用）
             if before_date is None and after_date is None:
-                period_label = "総合ランキング"
+                ranking_type = f"総合ランキング:{base_name}:部門"
             elif before_date and after_date:
                 # before-1とafter+1の日付を計算
                 after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
@@ -931,81 +930,45 @@ async def setup_ranking_commands(
                 )
 
                 if after_plus_one == before_minus_one:
-                    period_label = f"デイリーランキング:{after_plus_one}"
+                    ranking_type = f"デイリーランキング:{base_name}:部門"
                 else:
-                    period_label = (
-                        f"{after_plus_one}-{before_minus_one}期間のランキング"
+                    ranking_type = (
+                        f"{after_plus_one}-{before_minus_one}期間:{base_name}:部門"
                     )
             elif after_date:
                 after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
-                period_label = f"{after_plus_one}以降のランキング"
+                ranking_type = f"{after_plus_one}以降:{base_name}:部門"
             else:  # before_date のみ
                 before_minus_one = (before_date - timedelta(days=1)).strftime(
                     "%Y/%m/%d"
                 )
-                period_label = f"{before_minus_one}までのランキング"
+                ranking_type = f"{before_minus_one}まで:{base_name}:部門"
 
-            header_parts.append(period_label)
+            # ヘッダーメッセージの構築
+            header_parts = ["SEKAM統計所AI部", "専科AI動画", ranking_type]
             header_parts.append(
                 "-# データは前日までのものです。リアクション数は流動します。"
             )
             header_message = "\n".join(header_parts)
 
-            # Embedの作成（最大10件）
-            embeds = []
+            # Web埋め込みAPIのURLを生成（最大5件）
+            watch_urls = []
             for idx, row in enumerate(rows):
                 message_id = row[0]
-                channel_id = row[1]
-                content = row[2] if row[2] is not None else ""
-                total_count = int(row[3]) if row[3] is not None else 0
-
-                # 添付ファイルの取得
-                attachment_sql = (
-                    "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
-                )
-                attachment_row = run_aidb_query(
-                    attachment_sql, (message_id,), fetch="one"
-                )
-                image_url = (
-                    attachment_row[0] if attachment_row and attachment_row[0] else None
-                )
 
                 # ランク番号
                 rank = offset + idx + 1
 
-                # 説明文（添付ファイルがある場合も考慮）
-                if content.strip() != "":
-                    desc = content
-                elif image_url:
-                    desc = "Embedでの動画表示ができないため、代替案を模索中です。"
-                else:
-                    desc = "（内容なし）"
+                # URLエンコード用のランキング形式コメント
+                encoded_comment = quote(ranking_type)
 
-                # メッセージリンク（サーバーID: 518371205452005387）
-                link = f"https://discord.com/channels/518371205452005387/{channel_id}/{message_id}"
+                # Web埋め込みAPIのURL生成
+                watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
+                watch_urls.append(watch_url)
 
-                # Embed作成
-                embed = discord.Embed(
-                    title=f"{rank}位: メッセージに移動", url=link, description=desc
-                )
-                embed.add_field(
-                    name="リアクション数",
-                    value=f":{base_name}: × {total_count}",
-                    inline=False,
-                )
-
-                # 添付ファイル（画像）を設定
-                if image_url:
-                    embed.set_image(url=image_url)
-
-                embed.set_footer(
-                    text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
-                )
-                embeds.append(embed)
-
-            # ヘッダーメッセージと全てのEmbedを1つのメッセージで送信（最大10個まで）
-            await ctx.followup.send(header_message, embeds=embeds)
+            # ヘッダーメッセージとURLを送信
+            message_content = header_message + "\n\n" + "\n".join(watch_urls)
+            await ctx.followup.send(message_content)
 
             insert_command_log(ctx, "/airank", "OK")
 

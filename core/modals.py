@@ -219,7 +219,10 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
             update_video_tags(self.message_id, tags, user_id)
 
         # 元の画面に戻る
-        await interaction.response.send_message("情報を更新しました。", ephemeral=True)
+        await interaction.response.send_message(
+            "情報を更新しました。Discord側の問題から反映まで10-30分ほどかかります。",
+            ephemeral=True,
+        )
 
         if self.previous_view_data:
             # DetailViewに戻る

@@ -256,7 +256,8 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
 
             # 更新成功メッセージ
             await interaction.response.send_message(
-                "情報を更新しました。", ephemeral=True
+                "情報を更新しました。Discord側の問題から反映まで10-30分ほどかかります。",
+                ephemeral=True,
             )
 
         except Exception as e:

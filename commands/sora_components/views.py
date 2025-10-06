@@ -30,13 +30,12 @@ class MainMenuView(ui.View):
         # 絵文字選択Viewを表示
         view = EmojiSelectView()
 
-        embed = discord.Embed(
-            title="🏆 ランキング - 絵文字選択",
-            description="ランキングを表示する絵文字を選択してください",
-            color=discord.Color.gold(),
+        message_content = (
+            "🏆 **ランキング - 絵文字選択**\n\n"
+            "ランキングを表示する絵文字を選択してください"
         )
 
-        await interaction.response.edit_message(embed=embed, view=view)
+        await interaction.response.edit_message(content=message_content, view=view)
 
     @ui.button(label="検索する", style=discord.ButtonStyle.primary, emoji="🔍")
     async def search(self, interaction: discord.Interaction, button: ui.Button):
@@ -92,6 +91,14 @@ class MainMenuView(ui.View):
         # 動画ID入力Modalを表示
         modal = VideoIdModal()
         await interaction.response.send_modal(modal)
+
+    @ui.button(label="自分の投稿", style=discord.ButtonStyle.primary, emoji="📝")
+    async def my_posts(self, interaction: discord.Interaction, button: ui.Button):
+        """自分の投稿一覧を表示"""
+        # MyPostsViewに遷移
+        view = MyPostsView(interaction.user.id)
+        await interaction.response.defer()
+        await view.show(interaction)
 
 
 class EmojiSelectView(ui.View):
@@ -748,6 +755,13 @@ class DetailView(ui.View):
                 )
                 await interaction.response.defer()
                 await view.show(interaction, edit_message=True)
+            elif self.previous_view_data["type"] == "my_posts":
+                view = MyPostsView(
+                    self.previous_view_data["user_id"],
+                    self.previous_view_data["page"],
+                )
+                await interaction.response.defer()
+                await view.show(interaction, edit_message=True)
         except Exception as e:
             print(f"[ERROR] Detail back error: {e}")
             import traceback
@@ -969,3 +983,169 @@ class VideoByIdView(ui.View):
         # previous_view_dataをNoneにして、戻るボタンを表示しない
         modal = InfoEditModal(self.message_id, None)
         await interaction.response.send_modal(modal)
+
+
+class MyPostsView(ui.View):
+    """
+    自分の投稿一覧View
+    ユーザーの投稿を5件ずつページング表示
+    """
+
+    def __init__(self, user_id: int, page: int = 1):
+        super().__init__(timeout=180)
+        self.user_id = user_id
+        self.page = page
+        self.results: List[tuple] = []
+
+    def _update_components(self):
+        """ボタンとセレクトの状態を更新"""
+        try:
+            print(
+                f"[DEBUG] MyPosts _update_components, page={self.page}, results={len(self.results)}"
+            )
+            # ページングボタンの有効/無効化
+            self.children[0].disabled = self.page == 1  # 前のページボタン
+            self.children[1].disabled = len(self.results) < 5  # 次のページボタン
+
+            # 項目選択セレクトの選択肢を更新
+            offset = (self.page - 1) * 5
+            options = []
+            for idx in range(len(self.results)):
+                position = offset + idx + 1
+                options.append(
+                    discord.SelectOption(label=f"{position}番目", value=str(idx))
+                )
+
+            self.children[2].options = options
+            print(f"[DEBUG] Updated my_posts select options: {len(options)} items")
+        except Exception as e:
+            print(f"[ERROR] MyPosts _update_components error: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    async def fetch_results(self):
+        """ユーザーの投稿を取得"""
+        offset = (self.page - 1) * 5
+
+        sql = """
+            SELECT
+                m.id as message_id,
+                m.channel_id,
+                m.content,
+                COALESCE(SUM(r.count), 0) as reaction_count
+            FROM messages m
+            LEFT JOIN reactions r ON m.id = r.message_id
+            WHERE m.author_id = %s
+              AND (EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)
+                   OR m.content LIKE '%%sora.chatgpt.com%%')
+            GROUP BY m.id, m.channel_id, m.content
+            ORDER BY m.timestamp DESC
+            LIMIT 5 OFFSET %s
+        """
+
+        self.results = run_aidb_query(sql, (self.user_id, offset), fetch="all") or []
+
+    async def show(self, interaction: discord.Interaction, edit_message: bool = False):
+        """投稿一覧を表示"""
+        await self.fetch_results()
+
+        if not self.results:
+            if edit_message:
+                await interaction.edit_original_response(
+                    content=f"投稿が見つかりませんでした。（ページ{self.page}）",
+                    view=None,
+                )
+            else:
+                await interaction.followup.send(
+                    f"投稿が見つかりませんでした。（ページ{self.page}）",
+                    ephemeral=True,
+                )
+            return
+
+        # ヘッダーメッセージ
+        header_parts = ["SEKAM統計所AI部", "専科AI動画 - 自分の投稿一覧"]
+        header_parts.append("-# ページ " + str(self.page))
+        header_message = "\n".join(header_parts)
+
+        # Watch URLの生成
+        watch_urls = []
+        offset = (self.page - 1) * 5
+        encoded_comment = quote("自分の投稿")
+
+        for idx, row in enumerate(self.results):
+            message_id = row[0]
+            position = offset + idx + 1
+            watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
+            watch_urls.append(watch_url)
+
+        message_content = header_message + "\n\n" + "\n".join(watch_urls)
+
+        # ボタンとセレクトの更新
+        self._update_components()
+
+        if edit_message:
+            # defer()済みの場合はedit_original_responseを使用
+            await interaction.edit_original_response(content=message_content, view=self)
+        else:
+            await interaction.followup.send(message_content, view=self, ephemeral=True)
+
+    @ui.button(label="前のページ", style=discord.ButtonStyle.secondary, emoji="⬅️")
+    async def prev_page(self, interaction: discord.Interaction, button: ui.Button):
+        """前のページを表示"""
+        try:
+            print("[DEBUG] MyPosts prev button clicked")
+            if self.page > 1:
+                self.page -= 1
+                await interaction.response.defer()
+                await self.show(interaction, edit_message=True)
+        except Exception as e:
+            print(f"[ERROR] MyPosts prev error: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    @ui.button(label="次のページ", style=discord.ButtonStyle.secondary, emoji="➡️")
+    async def next_page(self, interaction: discord.Interaction, button: ui.Button):
+        """次のページを表示"""
+        try:
+            print("[DEBUG] MyPosts next button clicked")
+            self.page += 1
+            await interaction.response.defer()
+            await self.show(interaction, edit_message=True)
+        except Exception as e:
+            print(f"[ERROR] MyPosts next error: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    @ui.select(placeholder="詳細を見る項目を選択", min_values=1, max_values=1)
+    async def select_item(self, interaction: discord.Interaction, select: ui.Select):
+        """選択された項目の詳細を表示"""
+        try:
+            print("[DEBUG] MyPosts item select triggered")
+            print(f"[DEBUG] Selected value: {select.values[0]}")
+            print(f"[DEBUG] Results: {len(self.results)}")
+
+            idx = int(select.values[0])
+            message_id = self.results[idx][0]
+
+            print(f"[DEBUG] Message ID: {message_id}")
+
+            # DetailViewに遷移
+            view_data = {
+                "type": "my_posts",
+                "user_id": self.user_id,
+                "page": self.page,
+            }
+
+            detail_view = DetailView(message_id, view_data)
+            # セレクトの場合はdefer()せずに直接edit_messageを使う
+            await detail_view.show(interaction, edit_message=False)
+        except Exception as e:
+            print(f"[ERROR] MyPosts item select error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"エラー: {e}", ephemeral=True)

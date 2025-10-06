@@ -27,12 +27,15 @@ class MainMenuView(ui.View):
     )
     async def show_ranking(self, interaction: discord.Interaction, button: ui.Button):
         """ランキングモードを開始"""
-        # 絵文字選択Viewを表示
-        view = EmojiSelectView()
+        # ランキング種類選択Viewを表示
+        view = RankingTypeSelectView()
 
         message_content = (
-            "🏆 **ランキング - 絵文字選択**\n\n"
-            "ランキングを表示する絵文字を選択してください"
+            "🏆 **ランキング - 種類選択**\n\n"
+            "表示するランキングの種類を選択してください\n\n"
+            "🌟 **総合ランキング**: 全期間のランキング\n"
+            "📅 **デイリーランキング**: 特定の日のランキング\n"
+            "📆 **範囲指定**: 期間を指定してランキング"
         )
 
         await interaction.response.edit_message(content=message_content, view=view)
@@ -101,14 +104,197 @@ class MainMenuView(ui.View):
         await view.show(interaction)
 
 
+class RankingTypeSelectView(ui.View):
+    """
+    ランキング種類選択View
+    総合・デイリー・範囲指定の3つのボタンを表示
+    """
+
+    def __init__(self):
+        super().__init__(timeout=180)
+
+    @ui.button(label="総合ランキング", style=discord.ButtonStyle.primary, emoji="🌟")
+    async def overall_ranking(
+        self, interaction: discord.Interaction, button: ui.Button
+    ):
+        """総合ランキング（全期間）"""
+        # 絵文字選択Viewに遷移（日付指定なし）
+        view = EmojiSelectView(ranking_type="overall")
+
+        message_content = (
+            "🏆 **総合ランキング - 絵文字選択**\n\n"
+            "ランキングを表示する絵文字を選択してください"
+        )
+
+        await interaction.response.edit_message(content=message_content, view=view)
+
+    @ui.button(
+        label="デイリーランキング", style=discord.ButtonStyle.primary, emoji="📅"
+    )
+    async def daily_ranking(self, interaction: discord.Interaction, button: ui.Button):
+        """デイリーランキング（日付選択）"""
+        # 日付選択Viewに遷移
+        view = DailyRankingSelectView()
+        await interaction.response.defer()
+        await view.show(interaction)
+
+    @ui.button(label="範囲指定", style=discord.ButtonStyle.primary, emoji="📆")
+    async def range_ranking(self, interaction: discord.Interaction, button: ui.Button):
+        """範囲指定ランキング（期間指定）"""
+        from .modals import RangeDateModal
+
+        # 日付入力Modalを表示
+        modal = RangeDateModal()
+        await interaction.response.send_modal(modal)
+
+
+class DailyRankingSelectView(ui.View):
+    """
+    デイリーランキング日付選択View
+    2025/10/1から昨日までの日付をセレクトボックスで表示（25個ずつページング）
+    """
+
+    def __init__(self, page: int = 1):
+        super().__init__(timeout=180)
+        self.page = page
+        self.dates = []
+
+    def _get_date_list(self):
+        """2025/10/1から昨日までの日付リストを取得"""
+        from datetime import date, timedelta
+
+        start_date = date(2025, 10, 1)
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        dates = []
+        current = start_date
+        while current <= yesterday:
+            dates.append(current)
+            current += timedelta(days=1)
+
+        # 新しい日付順にソート
+        dates.reverse()
+        return dates
+
+    def _update_components(self):
+        """ボタンとセレクトの状態を更新"""
+        try:
+            # ページングボタンの有効/無効化
+            total_dates = len(self.dates)
+            total_pages = (total_dates + 24) // 25  # 25個ずつ
+
+            self.children[0].disabled = self.page == 1  # 前のページボタン
+            self.children[1].disabled = self.page >= total_pages  # 次のページボタン
+
+            # 日付セレクトの選択肢を更新
+            start_idx = (self.page - 1) * 25
+            end_idx = min(start_idx + 25, total_dates)
+            page_dates = self.dates[start_idx:end_idx]
+
+            options = []
+            for date_obj in page_dates:
+                date_str = date_obj.strftime("%Y/%m/%d")
+                label = f"{date_str} ({['月', '火', '水', '木', '金', '土', '日'][date_obj.weekday()]})"
+                options.append(discord.SelectOption(label=label, value=date_str))
+
+            self.children[2].options = options
+        except Exception as e:
+            print(f"[ERROR] DailyRanking _update_components error: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    async def show(self, interaction: discord.Interaction, edit_message: bool = False):
+        """日付選択画面を表示"""
+        self.dates = self._get_date_list()
+
+        if not self.dates:
+            message = "デイリーランキングの対象日がありません。"
+            if edit_message:
+                await interaction.edit_original_response(content=message, view=None)
+            else:
+                await interaction.followup.send(message, ephemeral=True)
+            return
+
+        # ボタンとセレクトの更新
+        self._update_components()
+
+        total_dates = len(self.dates)
+        total_pages = (total_dates + 24) // 25
+
+        message_content = (
+            "📅 **デイリーランキング - 日付選択**\n\n"
+            f"ランキングを表示する日付を選択してください\n"
+            f"（ページ {self.page} / {total_pages}）"
+        )
+
+        if edit_message:
+            await interaction.edit_original_response(content=message_content, view=self)
+        else:
+            await interaction.followup.send(message_content, view=self, ephemeral=True)
+
+    @ui.button(label="前のページ", style=discord.ButtonStyle.secondary, emoji="⬅️")
+    async def prev_page(self, interaction: discord.Interaction, button: ui.Button):
+        """前のページを表示"""
+        if self.page > 1:
+            self.page -= 1
+            await interaction.response.defer()
+            await self.show(interaction, edit_message=True)
+
+    @ui.button(label="次のページ", style=discord.ButtonStyle.secondary, emoji="➡️")
+    async def next_page(self, interaction: discord.Interaction, button: ui.Button):
+        """次のページを表示"""
+        self.page += 1
+        await interaction.response.defer()
+        await self.show(interaction, edit_message=True)
+
+    @ui.select(placeholder="日付を選択", min_values=1, max_values=1)
+    async def date_select(self, interaction: discord.Interaction, select: ui.Select):
+        """日付選択後、絵文字選択に遷移"""
+        try:
+            # 選択された日付をパース
+            from datetime import datetime
+
+            date_str = select.values[0]
+            selected_date = datetime.strptime(date_str, "%Y/%m/%d")
+
+            # 絵文字選択Viewに遷移
+            view = EmojiSelectView(ranking_type="daily", selected_date=selected_date)
+
+            message_content = (
+                f"📅 **デイリーランキング ({date_str}) - 絵文字選択**\n\n"
+                "ランキングを表示する絵文字を選択してください"
+            )
+
+            await interaction.response.edit_message(content=message_content, view=view)
+        except Exception as e:
+            print(f"[ERROR] DailyRanking date_select error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
+
+
 class EmojiSelectView(ui.View):
     """
     絵文字選択View
     ランキング用の絵文字を選択
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        ranking_type: str = "overall",
+        selected_date: datetime | None = None,
+        after_date: datetime | None = None,
+        before_date: datetime | None = None,
+    ):
         super().__init__(timeout=180)
+        self.ranking_type = ranking_type  # "overall", "daily", "range"
+        self.selected_date = selected_date  # デイリーランキング用
+        self.after_date = after_date  # 範囲指定用（開始日）
+        self.before_date = before_date  # 範囲指定用（終了日）
 
     @ui.select(
         placeholder="リアクション絵文字を選択",
@@ -120,7 +306,7 @@ class EmojiSelectView(ui.View):
             discord.SelectOption(
                 label="mo", value="mo", emoji="<:mo:1424391940782293157>"
             ),
-            discord.SelectOption(label="cool", value="cool", emoji="😎"),
+            discord.SelectOption(label="cool", value="cool", emoji="🆒"),
             discord.SelectOption(label="nerd", value="nerd", emoji="🤓"),
             discord.SelectOption(
                 label="raised_hands", value="raised_hands", emoji="🙌"
@@ -130,15 +316,25 @@ class EmojiSelectView(ui.View):
         ],
     )
     async def emoji_select(self, interaction: discord.Interaction, select: ui.Select):
-        """絵文字選択後、日付入力Modalを表示"""
-        from .modals import RankingDateModal
-
+        """絵文字選択後の処理"""
         # 選択された絵文字
         emoji_name = select.values[0]
 
-        # 日付入力Modalを表示
-        modal = RankingDateModal(emoji_name)
-        await interaction.response.send_modal(modal)
+        if self.ranking_type == "overall":
+            # 総合ランキング: 日付指定なしで即座に表示
+            view = RankingResultView(emoji_name, None, None)
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
+        elif self.ranking_type == "daily":
+            # デイリーランキング: 選択された日付で表示
+            view = RankingResultView(emoji_name, self.selected_date, self.selected_date)
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
+        else:  # "range"
+            # 範囲指定: 指定された日付範囲で表示
+            view = RankingResultView(emoji_name, self.after_date, self.before_date)
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
 
 
 class RankingResultView(ui.View):
@@ -167,34 +363,28 @@ class RankingResultView(ui.View):
 
     def _generate_ranking_label(self):
         """ランキング形式のラベルを生成"""
-        from datetime import timedelta
-
         if self.before_date is None and self.after_date is None:
             self.ranking_type = f"総合ランキング:{self.emoji_name}:部門"
         elif self.before_date and self.after_date:
-            after_plus_one = (self.after_date + timedelta(days=1)).strftime("%Y/%m/%d")
-            before_minus_one = (self.before_date - timedelta(days=1)).strftime(
-                "%Y/%m/%d"
-            )
-
-            if after_plus_one == before_minus_one:
-                self.ranking_type = f"デイリーランキング:{self.emoji_name}:部門"
-            else:
+            # デイリーランキング判定：開始日と終了日が同じ
+            if self.after_date.date() == self.before_date.date():
+                date_str = self.after_date.strftime("%Y/%m/%d")
                 self.ranking_type = (
-                    f"{after_plus_one}-{before_minus_one}期間:{self.emoji_name}:部門"
+                    f"{date_str} デイリーランキング:{self.emoji_name}:部門"
+                )
+            else:
+                # 範囲指定：ユーザーが入力した日付をそのまま表示
+                after_str = self.after_date.strftime("%Y/%m/%d")
+                before_str = self.before_date.strftime("%Y/%m/%d")
+                self.ranking_type = (
+                    f"{after_str}～{before_str} 期間:{self.emoji_name}:部門"
                 )
         elif self.after_date:
-            from datetime import timedelta
-
-            after_plus_one = (self.after_date + timedelta(days=1)).strftime("%Y/%m/%d")
-            self.ranking_type = f"{after_plus_one}以降:{self.emoji_name}:部門"
+            after_str = self.after_date.strftime("%Y/%m/%d")
+            self.ranking_type = f"{after_str}以降:{self.emoji_name}:部門"
         else:
-            from datetime import timedelta
-
-            before_minus_one = (self.before_date - timedelta(days=1)).strftime(
-                "%Y/%m/%d"
-            )
-            self.ranking_type = f"{before_minus_one}まで:{self.emoji_name}:部門"
+            before_str = self.before_date.strftime("%Y/%m/%d")
+            self.ranking_type = f"{before_str}まで:{self.emoji_name}:部門"
 
     async def fetch_results(self):
         """ランキング結果を取得"""
@@ -207,11 +397,16 @@ class RankingResultView(ui.View):
         where_conditions = [f"r.emoji_name IN ({placeholders})"]
 
         if self.before_date:
+            # before_dateの次の日の0時より前（つまりbefore_dateの23:59:59まで含む）
+            from datetime import timedelta
+
+            next_day = self.before_date + timedelta(days=1)
             where_conditions.append("m.timestamp < %s")
-            params.append(self.before_date)
+            params.append(next_day)
 
         if self.after_date:
-            where_conditions.append("m.timestamp > %s")
+            # after_dateの0時以降（つまりafter_dateの0:00:00から含む）
+            where_conditions.append("m.timestamp >= %s")
             params.append(self.after_date)
 
         where_conditions.append(

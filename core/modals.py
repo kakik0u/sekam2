@@ -25,14 +25,14 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
     # 期間指定（テキスト入力）
     after_date_input = ui.TextInput(
         label="開始日（YYYY/MM/DD形式、空欄でもOK）",
-        placeholder="例: 2024/01/01（この日より後）",
+        placeholder="例: 2025/10/01（この日より後）",
         required=False,
         max_length=10,
     )
 
     before_date_input = ui.TextInput(
         label="終了日（YYYY/MM/DD形式、空欄でもOK）",
-        placeholder="例: 2024/12/31（この日より前）",
+        placeholder="例: 2025/10/31（この日より前）",
         required=False,
         max_length=10,
     )
@@ -79,7 +79,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
     # タグ検索
     tags_input = ui.TextInput(
         label="タグ（カンマ区切り、空欄でもOK）",
-        placeholder="例: ドラえもん,猫,風景",
+        placeholder="例: 恐山,sama,オリジナル",
         required=False,
         max_length=100,
     )
@@ -162,7 +162,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
     # タグ編集
     tags_input = ui.TextInput(
         label="タグ（カンマ区切り）",
-        placeholder="例: ドラえもん,猫,風景",
+        placeholder="例: 恐山,sama,オリジナル",
         required=False,
         max_length=500,
         style=discord.TextStyle.paragraph,

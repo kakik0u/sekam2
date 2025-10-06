@@ -995,7 +995,7 @@ class MyPostsView(ui.View):
         super().__init__(timeout=180)
         self.user_id = user_id
         self.page = page
-        self.results: List[tuple] = []
+        self.results: list[tuple] = []
 
     def _update_components(self):
         """ボタンとセレクトの状態を更新"""

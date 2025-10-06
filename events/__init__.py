@@ -2,6 +2,7 @@
 Discordイベントハンドラ
 """
 
+import discord
 from .ready import setup_ready_event
 from .member import setup_member_events
 from .guild import setup_guild_events
@@ -15,7 +16,7 @@ __all__ = [
 ]
 
 
-def setup_all_events(client):
+def setup_all_events(client: discord.Client):
     """
     すべてのイベントハンドラを登録
 

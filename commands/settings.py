@@ -4,7 +4,8 @@
 """
 
 import discord
-from discord import app_commands
+from discord import app_commands, Client
+
 from discord.ext import commands
 from discord.app_commands import guild_only, allowed_contexts, allowed_installs
 
@@ -13,7 +14,7 @@ from core.log import insert_command_log
 from spam.settings import set_setting_value
 
 
-async def setup_settings_commands(tree, client):
+async def setup_settings_commands(tree: app_commands.CommandTree, client: Client):
     """
     設定コマンド群を登録
 

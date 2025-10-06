@@ -4,7 +4,7 @@ UI表示とインタラクション処理を担当
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import quote
 
 import discord
@@ -150,8 +150,8 @@ class RankingResultView(ui.View):
     def __init__(
         self,
         emoji_name: str,
-        after_date: Optional[datetime],
-        before_date: Optional[datetime],
+        after_date: datetime | None,
+        before_date: datetime | None,
         page: int = 1,
     ):
         super().__init__(timeout=180)
@@ -159,7 +159,7 @@ class RankingResultView(ui.View):
         self.after_date = after_date
         self.before_date = before_date
         self.page = page
-        self.results: List[tuple] = []
+        self.results: list[tuple] = []
         self.ranking_type = ""
 
         # ランキング形式ラベルの生成
@@ -381,7 +381,7 @@ class SearchResultView(ui.View):
 
     def __init__(
         self,
-        search_conditions: Dict[str, Any],
+        search_conditions: dict[str, Any],
         page: int = 1,
         sort_by: str = "reaction",
     ):
@@ -389,7 +389,7 @@ class SearchResultView(ui.View):
         self.search_conditions = search_conditions
         self.page = page
         self.sort_by = sort_by
-        self.results: List[tuple] = []
+        self.results: list[tuple] = []
 
     async def fetch_results(self):
         """検索結果を取得"""
@@ -707,7 +707,7 @@ class DetailView(ui.View):
     1件のWatch URLと戻る・情報追加ボタン
     """
 
-    def __init__(self, message_id: int, previous_view_data: Dict[str, Any]):
+    def __init__(self, message_id: int, previous_view_data: dict[str, Any]):
         super().__init__(timeout=180)
         self.message_id = message_id
         self.previous_view_data = previous_view_data
@@ -787,7 +787,7 @@ class TagListView(ui.View):
         super().__init__(timeout=180)
         self.page = page
         self.sort_by = sort_by  # "count" (件数順) or "name" (名前順)
-        self.tags: List[tuple] = []
+        self.tags: list[tuple] = []
 
     async def fetch_tags(self):
         """タグを集計して取得"""

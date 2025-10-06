@@ -11,9 +11,22 @@ dependencies = [
     "pillow>=11.3.0",
     "pilmoji>=2.0.4",
     "python-dotenv>=1.1.1",
+    "requests>=2.32.5",
 ]
 
 [dependency-groups]
-dev = [
-    "ruff>=0.13.3",
+dev = ["ruff>=0.13.3"]
+
+[tool.ruff.lint]
+# 追加ルール
+extend-select = [
+    "UP",     # 古い書き方を指摘
+    "RUF013", # 型注釈でNoneが許可されていないのにNoneが入っている箇所を指摘
+]
+
+# 無視するルール
+ignore = [
+    # openの不要なモード指定を指摘("r", "wt" → "w" など)
+    # 明示して困ることはないので無視
+    "UP015",
 ]

@@ -3,7 +3,6 @@
 /overload, /sync
 """
 
-from typing import Optional
 import discord
 from discord import app_commands, Client
 
@@ -24,7 +23,7 @@ async def setup_admin_commands(tree: app_commands.CommandTree, client: Client):
         name="overload", description="過負荷モードのON/OFFを切り替えます（管理者専用）"
     )
     @discord.app_commands.allowed_installs(guilds=True, users=True)
-    async def overload(ctx: discord.Interaction, enable: Optional[bool] = None):
+    async def overload(ctx: discord.Interaction, enable: bool | None = None):
         import config
 
         try:

@@ -2,11 +2,12 @@
 ログ記録機能
 """
 
-import discord
 import traceback
 
-from database.connection import run_db_query
+import discord
+
 from config import debug
+from database.connection import run_db_query
 
 
 def insert_log(member, result: str, error: str | None = None) -> bool:
@@ -80,11 +81,13 @@ def insert_command_log(ctx: discord.Interaction, command: str, result: str) -> N
         g = getattr(ctx, "guild", None)
         gid = int(getattr(g, "id", 0) or 0) if g else 0
         gname = getattr(g, "name", "") if g else ""
+        channel = getattr(ctx, "channel", None)
+        channel_id = int(getattr(channel, "id", 0) or 0) if channel else 0
 
         run_db_query(
-            "INSERT INTO commandlog (userid, user, time, command, result, serverid, server) "
-            "VALUES (%s, %s, NOW(), %s, %s, %s, %s)",
-            (uid, uname, command, result, gid, gname),
+            "INSERT INTO commandlog (userid, user, time, command, result, serverid, server, channelid) "
+            "VALUES (%s, %s, NOW(), %s, %s, %s, %s, %s)",
+            (uid, uname, command, result, gid, gname, channel_id),
             commit=True,
         )
     except Exception as e:

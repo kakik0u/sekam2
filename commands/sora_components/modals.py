@@ -28,14 +28,14 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
     # 期間指定（テキスト入力）
     after_date_input = ui.TextInput(
         label="開始日（YYYY/MM/DD形式、空欄でもOK）",
-        placeholder="例: 2024/01/01（この日より後）",
+        placeholder="例: 2025/10/01（この日より後）",
         required=False,
         max_length=10,
     )
 
     before_date_input = ui.TextInput(
         label="終了日（YYYY/MM/DD形式、空欄でもOK）",
-        placeholder="例: 2024/12/31（この日より前）",
+        placeholder="例: 2025/10/31（この日より前）",
         required=False,
         max_length=10,
     )
@@ -50,10 +50,10 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
         after_date = parse_date_input(self.after_date_input.value)
         before_date = parse_date_input(self.before_date_input.value)
 
-        # 日付検証
-        if after_date and before_date and after_date >= before_date:
+        # 日付検証（開始日 > 終了日の場合のみエラー、同じ日付はOK）
+        if after_date and before_date and after_date > before_date:
             await interaction.response.send_message(
-                "開始日は終了日より前である必要があります。", ephemeral=True
+                "開始日は終了日以前である必要があります。", ephemeral=True
             )
             return
 
@@ -63,6 +63,57 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
         view = RankingResultView(self.emoji_name, after_date, before_date)
         await interaction.response.defer()
         await view.show(interaction)
+
+
+class RangeDateModal(ui.Modal, title="ランキング期間指定"):
+    """
+    範囲指定ランキング用の日付入力Modal
+    日付入力後、絵文字選択に遷移
+    """
+
+    # 期間指定（テキスト入力）
+    after_date_input = ui.TextInput(
+        label="開始日（YYYY/MM/DD形式、空欄でもOK）",
+        placeholder="例: 2025/10/01（この日より後）",
+        required=False,
+        max_length=10,
+    )
+
+    before_date_input = ui.TextInput(
+        label="終了日（YYYY/MM/DD形式、空欄でもOK）",
+        placeholder="例: 2025/10/31（この日より前）",
+        required=False,
+        max_length=10,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        """フォーム送信時の処理"""
+        # 日付のパース
+        after_date = parse_date_input(self.after_date_input.value)
+        before_date = parse_date_input(self.before_date_input.value)
+
+        # 日付検証（開始日 > 終了日の場合のみエラー、同じ日付はOK）
+        if after_date and before_date and after_date > before_date:
+            await interaction.response.send_message(
+                "開始日は終了日以前である必要があります。", ephemeral=True
+            )
+            return
+
+        # 絵文字選択Viewに遷移
+        from .views import EmojiSelectView
+
+        view = EmojiSelectView(
+            ranking_type="range", after_date=after_date, before_date=before_date
+        )
+
+        message_content = (
+            "🏆 **範囲指定ランキング - 絵文字選択**\n\n"
+            "ランキングを表示する絵文字を選択してください"
+        )
+
+        await interaction.response.send_message(
+            content=message_content, view=view, ephemeral=True
+        )
 
 
 class SearchConditionModal(ui.Modal, title="検索条件指定"):
@@ -82,7 +133,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
     # タグ検索
     tags_input = ui.TextInput(
         label="タグ（カンマ区切り、空欄でもOK）",
-        placeholder="例: ドラえもん,猫,風景",
+        placeholder="例: 恐山,sama,オリジナル",
         required=False,
         max_length=100,
     )
@@ -165,7 +216,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
     # タグ編集
     tags_input = ui.TextInput(
         label="タグ（カンマ区切り）",
-        placeholder="例: ドラえもん,猫,風景",
+        placeholder="例: 恐山,sama,オリジナル",
         required=False,
         max_length=500,
         style=discord.TextStyle.paragraph,

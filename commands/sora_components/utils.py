@@ -4,12 +4,11 @@ SORAコマンド - ユーティリティ関数群
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 from database.connection import run_aidb_query
 
 
-def parse_date_input(date_str: Optional[str]) -> Optional[datetime]:
+def parse_date_input(date_str: str | None) -> datetime | None:
     """
     日付文字列をdatetimeオブジェクトに変換
 
@@ -31,7 +30,7 @@ def parse_date_input(date_str: Optional[str]) -> Optional[datetime]:
         return None
 
 
-def parse_tags_input(tags_str: str) -> Optional[List[str]]:
+def parse_tags_input(tags_str: str) -> list[str] | None:
     """
     カンマ区切りのタグ文字列をリストに変換
 
@@ -62,7 +61,7 @@ def parse_tags_input(tags_str: str) -> Optional[List[str]]:
     return tags
 
 
-def merge_tags(existing_tags: str, new_tags: List[str]) -> str:
+def merge_tags(existing_tags: str, new_tags: list[str]) -> str:
     """
     既存のタグと新しいタグをマージ
 
@@ -125,7 +124,7 @@ def update_video_title(message_id: int, title: str, user_id: int) -> bool:
         return False
 
 
-def update_video_tags(message_id: int, tags: List[str], user_id: int) -> bool:
+def update_video_tags(message_id: int, tags: list[str], user_id: int) -> bool:
     """
     動画のタグをmetaテーブルに保存
 

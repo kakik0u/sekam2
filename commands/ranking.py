@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import discord
-from discord import app_commands
+from discord import app_commands, Client
 
 import config
 from core.log import insert_command_log
@@ -17,9 +17,7 @@ from utils.cache import get_reference_data_label, load_json_cache, save_json_cac
 from utils.emoji import normalize_emoji_and_variants
 
 
-async def setup_ranking_commands(
-    tree: app_commands.CommandTree, client: discord.Client
-):
+async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client):
     """ランキングコマンドを登録"""
 
     @tree.command(name="grinrank", description="おもしろ専科民ランキング")

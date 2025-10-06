@@ -9,7 +9,7 @@ from spam.settings import get_setting_value
 from core.log import insert_command_log
 
 
-def setup_interaction_events(client):
+def setup_interaction_events(client: discord.Client):
     """
     on_interaction イベントを登録
 

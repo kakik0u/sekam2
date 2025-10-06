@@ -5,6 +5,7 @@
 """
 
 import discord
+from discord import app_commands, Client
 from discord.app_commands import allowed_installs
 import os
 import tempfile
@@ -677,7 +678,7 @@ def create_reaction_graph(
         raise
 
 
-async def setup_graph_commands(tree, client):
+async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
     """
     グラフコマンドを登録
 

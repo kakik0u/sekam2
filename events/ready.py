@@ -8,7 +8,7 @@ from bot import setup_custom_dns
 from fileutil import loadtxt
 
 
-def setup_ready_event(client):
+def setup_ready_event(client: discord.Client):
     """
     on_ready イベントを登録
 

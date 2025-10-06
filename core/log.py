@@ -4,7 +4,6 @@
 
 import discord
 import traceback
-from typing import Optional
 
 from database.connection import run_db_query
 from config import debug
@@ -97,7 +96,7 @@ async def handle_command_error(
     ctx: discord.Interaction,
     command: str,
     error: Exception,
-    user_message: Optional[str] = None,
+    user_message: str | None = None,
 ) -> None:
     """
     コマンド実行時のエラーを統一的に処理する

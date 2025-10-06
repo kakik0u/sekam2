@@ -3,7 +3,6 @@ SORAコマンド - Modalクラス群
 ユーザー入力フォームとデータ検証を担当
 """
 
-from typing import Optional
 from urllib.parse import quote
 
 import discord
@@ -172,7 +171,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
         style=discord.TextStyle.paragraph,
     )
 
-    def __init__(self, message_id: int, previous_view_data: Optional[dict]):
+    def __init__(self, message_id: int, previous_view_data: dict | None):
         super().__init__()
         self.message_id = message_id
         self.previous_view_data = previous_view_data

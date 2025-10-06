@@ -4,6 +4,7 @@
 """
 
 import discord
+from discord import app_commands, Client
 from discord.app_commands import allowed_installs
 
 from core.zichi import insert_zichi_request
@@ -11,7 +12,7 @@ from core.log import insert_command_log
 from config import debug
 
 
-async def setup_misc_commands(tree, client):
+async def setup_misc_commands(tree: app_commands.CommandTree, client: Client):
     """
     その他のコマンドを登録
 

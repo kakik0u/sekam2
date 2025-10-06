@@ -2,6 +2,7 @@
 コマンド登録モジュール
 """
 
+from discord import app_commands, Client
 from .admin import setup_admin_commands
 from .graph import setup_graph_commands
 from .misc import setup_misc_commands
@@ -24,7 +25,7 @@ __all__ = [
 ]
 
 
-async def setup_all_commands(tree, client):
+async def setup_all_commands(tree: app_commands.CommandTree, client: Client):
     """
     すべてのコマンドを登録
 

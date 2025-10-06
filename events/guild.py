@@ -5,7 +5,7 @@ on_guild_join イベントハンドラ
 import discord
 
 
-def setup_guild_events(client):
+def setup_guild_events(client: discord.Client):
     """
     on_guild_join イベントを登録
 

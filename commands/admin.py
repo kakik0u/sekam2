@@ -5,12 +5,13 @@
 
 from typing import Optional
 import discord
+from discord import app_commands, Client
 
 from core.zichi import enforce_zichi_block
 from core.log import insert_command_log, handle_command_error
 
 
-async def setup_admin_commands(tree, client):
+async def setup_admin_commands(tree: app_commands.CommandTree, client: Client):
     """
     管理者コマンドを登録
 

@@ -33,44 +33,27 @@ async def setup_sora_commands(
             view = MainMenuView()
 
             # 初期メッセージを送信
-            embed = discord.Embed(
-                title="🌌 AI動画検索ツール",
-                description=(
-                    "AI動画の検索・ランキング・ランダム再生ができます。\n"
-                    "それぞれの動画にユーザーがタグ(例:オリジナル/恐山)やタイトルをつけられます。\n"
-                    "下のボタンから操作を選択してください。"
-                ),
-                color=discord.Color.blue(),
-            )
-
-            embed.add_field(
-                name="🏆 ランキングを表示する",
-                value="リアクション数でランキングを表示します",
-                inline=False,
-            )
-            embed.add_field(
-                name="🔍 検索する",
-                value="タグやリアクション数で動画を検索します",
-                inline=False,
-            )
-            embed.add_field(
-                name="🎲 ランダムで再生",
-                value="ランダムに動画を再生します",
-                inline=False,
-            )
-            embed.add_field(
-                name="🏷️ タグ一覧",
-                value="登録されているタグを一覧表示します",
-                inline=False,
-            )
-            embed.add_field(
-                name="🔢 IDで視聴",
-                value="動画ID（メッセージID）を指定して視聴します",
-                inline=False,
+            message_content = (
+                "🌌 **AI動画検索ツール**\n\n"
+                "AI動画の検索・ランキング・ランダム再生ができます。\n"
+                "それぞれの動画にユーザーがタグ(例:オリジナル/恐山)やタイトルをつけられます。\n"
+                "下のボタンから操作を選択してください。\n\n"
+                "🏆 **ランキングを表示する**\n"
+                "リアクション数でランキングを表示します\n\n"
+                "🔍 **検索する**\n"
+                "タグやリアクション数で動画を検索します\n\n"
+                "🎲 **ランダムで再生**\n"
+                "ランダムに動画を再生します\n\n"
+                "🏷️ **タグ一覧**\n"
+                "登録されているタグを一覧表示します\n\n"
+                "🔢 **IDで視聴**\n"
+                "動画ID（メッセージID）を指定して視聴します\n\n"
+                "📝 **自分の投稿**\n"
+                "あなたが投稿した動画の一覧を表示します"
             )
 
             await interaction.response.send_message(
-                embed=embed, view=view, ephemeral=True
+                content=message_content, view=view, ephemeral=True
             )
 
             # コマンドログを記録

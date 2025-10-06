@@ -802,8 +802,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
     async def airank(
         ctx: discord.Interaction,
         emoji: str,
-        before: str = None,
-        after: str = None,
+        before: str | None = None,
+        after: str | None = None,
         page: int = 1,
     ):
         """AI部門の特定リアクションを最も多く獲得したメッセージのランキングを表示"""

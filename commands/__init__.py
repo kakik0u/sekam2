@@ -2,7 +2,8 @@
 コマンド登録モジュール
 """
 
-from discord import app_commands, Client
+from discord import Client, app_commands
+
 from .admin import setup_admin_commands
 from .graph import setup_graph_commands
 from .misc import setup_misc_commands

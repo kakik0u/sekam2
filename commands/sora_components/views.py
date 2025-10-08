@@ -59,8 +59,16 @@ class MainMenuView(ui.View):
         sql = """
             SELECT m.id
             FROM messages m
-            WHERE EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)
-               OR m.content LIKE '%%sora.chatgpt.com%%'
+            WHERE EXISTS (
+                SELECT 1 FROM attachments a
+                WHERE a.message_id = m.id
+                AND (
+                    a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR
+                    a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR
+                    a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR
+                    a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'
+                )
+            )
             ORDER BY RAND()
             LIMIT 1
         """
@@ -410,8 +418,11 @@ class RankingResultView(ui.View):
             params.append(self.after_date)
 
         where_conditions.append(
-            "(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id) "
-            "OR m.content LIKE '%%sora.chatgpt.com%%')"
+            "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
+            "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
+            "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
+            "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
+            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
         )
 
         where_clause = " AND ".join(where_conditions)
@@ -606,10 +617,13 @@ class SearchResultView(ui.View):
                 params.append(f"%{tag}%")
             where_conditions.append(f"({' OR '.join(tag_conditions)})")
 
-        # 動画または添付ファイルが存在
+        # 動画ファイルが添付されている
         where_conditions.append(
-            "(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id) "
-            "OR m.content LIKE '%%sora.chatgpt.com%%')"
+            "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
+            "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
+            "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
+            "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
+            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
         )
 
         # リアクション数下限はHAVING句で処理
@@ -871,8 +885,16 @@ class RandomPlayView(ui.View):
         sql = """
             SELECT m.id
             FROM messages m
-            WHERE EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)
-               OR m.content LIKE '%%sora.chatgpt.com%%'
+            WHERE EXISTS (
+                SELECT 1 FROM attachments a
+                WHERE a.message_id = m.id
+                AND (
+                    a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR
+                    a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR
+                    a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR
+                    a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'
+                )
+            )
             ORDER BY RAND()
             LIMIT 1
         """
@@ -1232,8 +1254,11 @@ class MyPostsView(ui.View):
             FROM messages m
             LEFT JOIN reactions r ON m.id = r.message_id
             WHERE m.author_id = %s
-              AND (EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)
-                   OR m.content LIKE '%%sora.chatgpt.com%%')
+              AND EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND (
+                  a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR
+                  a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR
+                  a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR
+                  a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))
             GROUP BY m.id, m.channel_id, m.content
             ORDER BY m.timestamp DESC
             LIMIT 5 OFFSET %s

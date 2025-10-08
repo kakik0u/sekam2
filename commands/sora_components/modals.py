@@ -376,8 +376,11 @@ class VideoIdModal(ui.Modal, title="動画ID指定"):
                 SELECT m.id
                 FROM messages m
                 WHERE m.id = %s
-                AND (EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)
-                     OR m.content LIKE '%%sora.chatgpt.com%%')
+                AND EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND (
+                    a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR
+                    a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR
+                    a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR
+                    a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))
             """
             result = run_aidb_query(sql, (message_id,), fetch="one")
 

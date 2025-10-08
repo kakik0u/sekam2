@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import discord
-from discord import app_commands, Client
+from discord import Client, app_commands
 
 import config
 from core.log import insert_command_log
@@ -881,10 +881,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 where_conditions.append("m.timestamp > %s")
                 params.append(after_date)
 
-            # 添付ファイルがあるか、sora.chatgpt.comを含むメッセージのみ
+            # 添付ファイルが動画であるメッセージのみ
             where_conditions.append(
-                "(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id) "
-                "OR m.content LIKE '%%sora.chatgpt.com%%')"
+                "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
+                "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
+                "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
+                "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
+                "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
             )
 
             where_clause = " AND ".join(where_conditions)

@@ -129,12 +129,8 @@ class RankingTypeSelectView(ui.View):
         # 絵文字選択Viewに遷移（日付指定なし）
         view = EmojiSelectView(ranking_type="overall")
 
-        message_content = (
-            "🏆 **総合ランキング - 絵文字選択**\n\n"
-            "ランキングを表示する絵文字を選択してください"
-        )
-
-        await interaction.response.edit_message(content=message_content, view=view)
+        await interaction.response.defer()
+        await view.show(interaction, edit_message=True)
 
     @ui.button(
         label="デイリーランキング", style=discord.ButtonStyle.primary, emoji="📅"
@@ -270,12 +266,8 @@ class DailyRankingSelectView(ui.View):
             # 絵文字選択Viewに遷移
             view = EmojiSelectView(ranking_type="daily", selected_date=selected_date)
 
-            message_content = (
-                f"📅 **デイリーランキング ({date_str}) - 絵文字選択**\n\n"
-                "ランキングを表示する絵文字を選択してください"
-            )
-
-            await interaction.response.edit_message(content=message_content, view=view)
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
         except Exception as e:
             print(f"[ERROR] DailyRanking date_select error: {e}")
             import traceback
@@ -303,6 +295,93 @@ class EmojiSelectView(ui.View):
         self.selected_date = selected_date  # デイリーランキング用
         self.after_date = after_date  # 範囲指定用（開始日）
         self.before_date = before_date  # 範囲指定用（終了日）
+        self.selected_tag = None  # タグ絞り込み用
+        self.tags = []  # 利用可能なタグリスト
+
+    async def fetch_tags(self):
+        """利用可能なタグを取得"""
+        import json
+
+        # metaテーブルからすべてのtagを取得
+        sql = "SELECT tag FROM meta WHERE tag IS NOT NULL AND tag != ''"
+        results = run_aidb_query(sql, (), fetch="all")
+
+        if not results:
+            self.tags = []
+            return
+
+        # JSON配列をパースしてタグを抽出
+        tag_set = set()
+        for row in results:
+            try:
+                tag_list = json.loads(row[0])
+                if isinstance(tag_list, list):
+                    for tag in tag_list:
+                        if isinstance(tag, str) and tag.strip():
+                            tag_set.add(tag.strip())
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # タグをソートして格納（上位20個まで）
+        self.tags = sorted(list(tag_set))[:20]
+
+    def _update_components(self):
+        """タグセレクトの選択肢を更新"""
+        if len(self.tags) > 0:
+            # タグセレクトの選択肢を更新
+            tag_options = [
+                discord.SelectOption(
+                    label="タグ絞り込みなし",
+                    value="none",
+                    default=self.selected_tag is None,
+                )
+            ]
+            for tag in self.tags:
+                tag_options.append(
+                    discord.SelectOption(
+                        label=tag, value=tag, default=self.selected_tag == tag
+                    )
+                )
+            # タグセレクト（インデックス1）の選択肢を更新
+            if len(self.children) > 1:
+                self.children[1].options = tag_options
+
+    async def show(self, interaction, edit_message=False):
+        """Viewを表示"""
+        await self.fetch_tags()
+        self._update_components()
+
+        message_content = f"**{self.ranking_type}**\n絵文字を選択してください"
+        if self.selected_tag:
+            message_content += f"\n🏷️ タグ絞り込み: {self.selected_tag}"
+
+        if edit_message:
+            await interaction.edit_original_response(content=message_content, view=self)
+        else:
+            await interaction.followup.send(message_content, view=self, ephemeral=True)
+
+    @ui.select(
+        placeholder="タグで絞り込み（任意）",
+        min_values=1,
+        max_values=1,
+        options=[discord.SelectOption(label="読み込み中...", value="loading")],
+    )
+    async def tag_select(self, interaction: discord.Interaction, select: ui.Select):
+        """タグ選択後の処理"""
+        try:
+            selected_value = select.values[0]
+            if selected_value == "none":
+                self.selected_tag = None
+            else:
+                self.selected_tag = selected_value
+
+            await interaction.response.defer()
+            await self.show(interaction, edit_message=True)
+        except Exception as e:
+            print(f"[ERROR] Tag select error: {e}")
+            await interaction.response.send_message(
+                "エラーが発生しました。", ephemeral=True
+            )
 
     @ui.select(
         placeholder="リアクション絵文字を選択",
@@ -330,17 +409,29 @@ class EmojiSelectView(ui.View):
 
         if self.ranking_type == "overall":
             # 総合ランキング: 日付指定なしで即座に表示
-            view = RankingResultView(emoji_name, None, None)
+            view = RankingResultView(
+                emoji_name, None, None, selected_tag=self.selected_tag
+            )
             await interaction.response.defer()
             await view.show(interaction, edit_message=True)
         elif self.ranking_type == "daily":
             # デイリーランキング: 選択された日付で表示
-            view = RankingResultView(emoji_name, self.selected_date, self.selected_date)
+            view = RankingResultView(
+                emoji_name,
+                self.selected_date,
+                self.selected_date,
+                selected_tag=self.selected_tag,
+            )
             await interaction.response.defer()
             await view.show(interaction, edit_message=True)
         else:  # "range"
             # 範囲指定: 指定された日付範囲で表示
-            view = RankingResultView(emoji_name, self.after_date, self.before_date)
+            view = RankingResultView(
+                emoji_name,
+                self.after_date,
+                self.before_date,
+                selected_tag=self.selected_tag,
+            )
             await interaction.response.defer()
             await view.show(interaction, edit_message=True)
 
@@ -357,12 +448,14 @@ class RankingResultView(ui.View):
         after_date: datetime | None,
         before_date: datetime | None,
         page: int = 1,
+        selected_tag: str | None = None,
     ):
         super().__init__(timeout=180)
         self.emoji_name = emoji_name
         self.after_date = after_date
         self.before_date = before_date
         self.page = page
+        self.selected_tag = selected_tag
         self.results: list[tuple] = []
         self.ranking_type = ""
 
@@ -417,6 +510,11 @@ class RankingResultView(ui.View):
             where_conditions.append("m.timestamp >= %s")
             params.append(self.after_date)
 
+        # タグ絞り込み条件
+        if self.selected_tag:
+            where_conditions.append("meta.tag LIKE %s")
+            params.append(f"%{self.selected_tag}%")
+
         where_conditions.append(
             "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
             "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
@@ -436,6 +534,7 @@ class RankingResultView(ui.View):
                 SUM(r.count) as total_reaction_count
             FROM messages m
             JOIN reactions r ON m.id = r.message_id
+            LEFT JOIN meta ON m.id = meta.id
             WHERE {where_clause}
             GROUP BY m.id, m.channel_id, m.content
             ORDER BY total_reaction_count DESC
@@ -464,6 +563,8 @@ class RankingResultView(ui.View):
 
         # ヘッダーメッセージ
         header_parts = ["SEKAM統計所AI部", "専科AI動画", self.ranking_type]
+        if self.selected_tag:
+            header_parts.append(f"🏷️ タグ絞り込み: {self.selected_tag}")
         header_parts.append(
             "-# データは前日までのものです。リアクション数は流動します。"
         )
@@ -599,6 +700,8 @@ class SearchResultView(ui.View):
 
     async def fetch_results(self):
         """検索結果を取得"""
+        from datetime import timedelta
+
         where_conditions = []
         having_conditions = []
         params = []
@@ -617,6 +720,17 @@ class SearchResultView(ui.View):
                 params.append(f"%{tag}%")
             where_conditions.append(f"({' OR '.join(tag_conditions)})")
 
+        # 日付条件の追加
+        if self.search_conditions.get("start_date"):
+            where_conditions.append("m.timestamp >= %s")
+            params.append(self.search_conditions["start_date"])
+
+        if self.search_conditions.get("end_date"):
+            # 終了日の翌日の0:00より前
+            next_day = self.search_conditions["end_date"] + timedelta(days=1)
+            where_conditions.append("m.timestamp < %s")
+            params.append(next_day)
+
         # 動画ファイルが添付されている
         where_conditions.append(
             "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
@@ -634,6 +748,16 @@ class SearchResultView(ui.View):
         # ソート方式
         if self.sort_by == "reaction":
             order_clause = "ORDER BY reaction_count DESC"
+        elif self.sort_by == "grin":
+            # :grin:のリアクション数順でソート
+            order_clause = """
+                ORDER BY COALESCE((
+                    SELECT SUM(r2.count)
+                    FROM reactions r2
+                    WHERE r2.message_id = m.id
+                    AND r2.emoji_name = 'grin'
+                ), 0) DESC
+            """
         elif self.sort_by == "date_desc":
             order_clause = "ORDER BY m.timestamp DESC"
         elif self.sort_by == "date_asc":
@@ -791,6 +915,7 @@ class SearchResultView(ui.View):
             discord.SelectOption(
                 label="リアクション数順", value="reaction", default=True
             ),
+            discord.SelectOption(label=":grin:数順", value="grin"),
             discord.SelectOption(label="日付（新しい順）", value="date_desc"),
             discord.SelectOption(label="日付（古い順）", value="date_asc"),
             discord.SelectOption(label="ランダム", value="random"),

@@ -13,3 +13,4 @@ database/*
 newgrinui.png
 web
 .ruff_cache
+chat_log.csv

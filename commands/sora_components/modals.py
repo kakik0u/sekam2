@@ -106,14 +106,8 @@ class RangeDateModal(ui.Modal, title="ランキング期間指定"):
             ranking_type="range", after_date=after_date, before_date=before_date
         )
 
-        message_content = (
-            "🏆 **範囲指定ランキング - 絵文字選択**\n\n"
-            "ランキングを表示する絵文字を選択してください"
-        )
-
-        await interaction.response.send_message(
-            content=message_content, view=view, ephemeral=True
-        )
+        await interaction.response.defer()
+        await view.show(interaction, edit_message=True)
 
 
 class SearchConditionModal(ui.Modal, title="検索条件指定"):
@@ -146,9 +140,25 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
         max_length=10,
     )
 
+    # 日付（開始）
+    start_date_input = ui.TextInput(
+        label="日付（開始）（空欄でもOK）",
+        placeholder="例: 2025/10/01",
+        required=False,
+        max_length=10,
+    )
+
+    # 日付（終了）
+    end_date_input = ui.TextInput(
+        label="日付（終了）（空欄でもOK）",
+        placeholder="例: 2025/10/31",
+        required=False,
+        max_length=10,
+    )
+
     async def on_submit(self, interaction: discord.Interaction):
         """フォーム送信時の処理"""
-        from .utils import parse_tags_input
+        from .utils import parse_date_input, parse_tags_input
         from .views import SearchResultView
 
         # 入力値の取得
@@ -158,6 +168,12 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
             self.min_reaction_input.value.strip()
             if self.min_reaction_input.value
             else None
+        )
+        start_date_str = (
+            self.start_date_input.value.strip() if self.start_date_input.value else None
+        )
+        end_date_str = (
+            self.end_date_input.value.strip() if self.end_date_input.value else None
         )
 
         # タグのパース
@@ -185,11 +201,41 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
                 )
                 return
 
+        # 日付のパース
+        start_date = None
+        end_date = None
+        if start_date_str:
+            start_date = parse_date_input(start_date_str)
+            if start_date is None:
+                await interaction.response.send_message(
+                    "開始日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。",
+                    ephemeral=True,
+                )
+                return
+
+        if end_date_str:
+            end_date = parse_date_input(end_date_str)
+            if end_date is None:
+                await interaction.response.send_message(
+                    "終了日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。",
+                    ephemeral=True,
+                )
+                return
+
+        # 日付の論理チェック
+        if start_date and end_date and start_date > end_date:
+            await interaction.response.send_message(
+                "開始日付は終了日付より前にしてください。", ephemeral=True
+            )
+            return
+
         # 検索条件の作成
         search_conditions = {
             "title": title,
             "tags": tags,
             "min_reaction": min_reaction,
+            "start_date": start_date,
+            "end_date": end_date,
         }
 
         # SearchResultViewに遷移

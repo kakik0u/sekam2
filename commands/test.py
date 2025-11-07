@@ -138,6 +138,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
                 f"└─ Discord送信:     {send_duration:.2f}秒\n"
                 f"```"
             )
+            print(timing_summary)
 
             await ctx.followup.send(
                 f"{username}の:grin:ランキング（試験版）\n{reference_label}",

@@ -190,8 +190,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
             parsed_emoji = parse_emoji_conditions(emoji_str)
             if parsed_emoji is None:
                 await interaction.response.send_message(
-                    "絵文字検索の形式が正しくありません。\n"
-                    "例: grin:5 または grin,sob または grin:3,sob:2",
+                    "絵文字指定の形式が正しくありません。\n例: grin:3,sob:2 など",
                     ephemeral=True,
                 )
                 return
@@ -204,7 +203,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
             start_date = parse_date_input(start_date_str)
             if start_date is None:
                 await interaction.response.send_message(
-                    "開始日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。",
+                    "開始日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。\n例:2025/3/8",
                     ephemeral=True,
                 )
                 return
@@ -213,7 +212,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
             end_date = parse_date_input(end_date_str)
             if end_date is None:
                 await interaction.response.send_message(
-                    "終了日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。",
+                    "終了日付の形式が正しくありません。YYYY/MM/DD形式で入力してください。\n例:2025/3/8",
                     ephemeral=True,
                 )
                 return

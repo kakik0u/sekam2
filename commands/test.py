@@ -3,27 +3,26 @@
 /test grinrank - 画像形式のgrinrankコマンド
 """
 
-import discord
-from discord import app_commands
 import os
-import json
-import time
 import tempfile
 from datetime import datetime, timedelta
+
+import discord
 import matplotlib
+from discord import app_commands
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
 
-from core.zichi import enforce_zichi_block
+from config import debug
 from core.log import insert_command_log
+from core.zichi import enforce_zichi_block
+from database.connection import run_db_query, run_statdb_query
 from spam.protection import is_overload_allowed
-from database.connection import run_statdb_query, run_db_query
-from utils.cache import load_json_cache, save_json_cache, get_reference_data_label
-from config import debug, CACHE_DIR
+from utils.cache import get_reference_data_label
 
 
 async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Client):
@@ -101,11 +100,52 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             # Discordに送信
             send_start = time.time()
             file = discord.File(image_path, filename="grinrank.png")
-            await ctx.followup.send(
-                f"{username}の:grin:ランキング（試験版）\n{reference_label}", file=file
+
+            # 処理時間のサマリーを作成
+            total_time = time.time() - start_time
+            defer_duration = defer_time - start_time
+            data_duration = data_end - data_start
+            image_duration = image_end - image_start
+            send_duration = time.time() - send_start  # 送信時間は送信後に計測
+
+            # データ取得の詳細タイミング
+            timing_details = grinrank_data.get("_timing", {})
+            rank_time = timing_details.get("rank_total", 0)
+            rank_cache = timing_details.get("rank_cache_hit", False)
+            batting_time = timing_details.get("batting_total", 0)
+            batting_q1 = timing_details.get("batting_query1", 0)
+            batting_q2 = timing_details.get("batting_query2", 0)
+            daily_time = timing_details.get("daily_total", 0)
+            period_time = timing_details.get("period_total", 0)
+
+            # 期間別ランキングのキャッシュ情報
+            period_ranks = grinrank_data.get("period_ranks", {})
+            period_cache = period_ranks.get("_cache_hit", False)
+
+            timing_summary = (
+                f"**デバッグ用**\n"
+                f"```\n"
+                f"総処理時間:        {total_time:.2f}秒\n"
+                f"├─ 初期化:          {defer_duration:.2f}秒\n"
+                f"├─ データ取得:      {data_duration:.2f}秒\n"
+                f"│  ├─ 全体ランク:    {rank_time:.2f}秒 {'(cache)' if rank_cache else '(query)'}\n"
+                f"│  ├─ 打率計算:      {batting_time:.2f}秒\n"
+                f"│  │  ├─ クエリ1:    {batting_q1:.2f}秒 (総メッセージ数)\n"
+                f"│  │  └─ クエリ2:    {batting_q2:.2f}秒 (grin付きメッセージ数)\n"
+                f"│  ├─ 7日間データ:  {daily_time:.2f}秒 (最適化済み:1クエリ)\n"
+                f"│  └─ 期間別ランク:  {period_time:.2f}秒 {'(cache)' if period_cache else '(query)'}\n"
+                f"├─ 画像生成:        {image_duration:.2f}秒\n"
+                f"└─ Discord送信:     {send_duration:.2f}秒\n"
+                f"```"
             )
-            send_end = time.time()
-            print(f"[Timer] Discord送信完了: {send_end - send_start:.3f}秒")
+
+            await ctx.followup.send(
+                f"{username}の:grin:ランキング（試験版）\n{reference_label}",
+                file=file,
+            )
+
+            print(f"[Timer] Discord送信完了: {send_duration:.3f}秒")
+            print(f"[Timer] 総処理時間: {total_time:.3f}秒")
 
             # 一時ファイル削除
             try:
@@ -113,10 +153,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             except Exception:
                 pass
 
-            total_time = time.time() - start_time
-            print(f"[Timer] 総処理時間: {total_time:.3f}秒")
-
-            insert_command_log(ctx, "/test grinrank", "OK")
+            insert_command_log(ctx, "/test grinrank", f"OK ({total_time:.2f}s)")
 
         except Exception as e:
             if debug:
@@ -143,91 +180,88 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
 
 def get_grinrank_data(user_id: int) -> dict:
     """
-    grinrankに必要な全データを取得
+    grinrankに必要な全データを取得（集計テーブル使用版）
 
     Args:
         user_id: ユーザーID
 
     Returns:
         dict: 各種データを含む辞書、エラー時はNone
+            timing情報も含まれる
     """
     try:
         import time
 
         func_start = time.time()
+        timing_details = {}
 
         data = {}
 
-        # 1. 全体ランキングデータ（キャッシュ使用）
+        # 1. 全体ランキング（集計テーブルgrin_user_statsを使用）
         rank_start = time.time()
-        cache_path = os.path.join(CACHE_DIR, "grinrank.json")
-        grin_rows = load_json_cache(cache_path, [])
-        if not grin_rows:
-            sql = (
-                "SELECT m.author_id, SUM(r.count) as grincount "
-                "FROM reactions r JOIN messages m ON r.message_id = m.id "
-                "WHERE r.emoji_name = 'grin' "
-                "GROUP BY m.author_id ORDER BY grincount DESC"
-            )
-            grin_rows = run_statdb_query(sql, (), fetch="all") or []
-            try:
-                grin_rows = [
-                    [
-                        int(r[0]) if r and r[0] is not None else 0,
-                        int(r[1]) if r and r[1] is not None else 0,
-                    ]
-                    for r in grin_rows
-                ]
-            except Exception:
-                grin_rows = []
-            save_json_cache(cache_path, grin_rows)
 
-        # 自分の順位と個数を計算
-        total = len(grin_rows)
-        grincount = 0
-        has_user = False
-        for r in grin_rows:
-            try:
-                aid = int(str(r[0])) if r[0] is not None else 0
-                cnt = int(r[1]) if r[1] is not None else 0
-            except Exception:
-                continue
-            if aid == user_id:
-                grincount = cnt
-                has_user = True
-                break
+        # ユーザーのデータを取得
+        sql_user = """
+        SELECT total_grin_count, total_messages, grin_messages
+        FROM grin_user_stats
+        WHERE user_id = %s
+        """
+        user_row = run_statdb_query(sql_user, (user_id,), fetch="one")
 
-        if not has_user or total == 0:
+        if not user_row:
+            # 集計テーブルにデータがない場合はNone
             return None
 
-        # 順位計算
-        greater = sum(
-            1 for r in grin_rows if (int(r[1]) if r[1] is not None else 0) > grincount
-        )
-        rank = greater + 1
+        grincount = int(user_row[0]) if user_row[0] else 0
+        total_messages = int(user_row[1]) if user_row[1] else 0
+        grin_messages = int(user_row[2]) if user_row[2] else 0
+
+        # 順位を計算（自分より上の人数 + 1）
+        sql_rank = """
+        SELECT COUNT(*) + 1 as rank
+        FROM grin_user_stats
+        WHERE total_grin_count > %s
+        """
+        rank_row = run_statdb_query(sql_rank, (grincount,), fetch="one")
+        rank = int(rank_row[0]) if rank_row else 1
+
+        # 総ユーザー数
+        sql_total = "SELECT COUNT(*) FROM grin_user_stats"
+        total_row = run_statdb_query(sql_total, (), fetch="one")
+        total = int(total_row[0]) if total_row else 0
 
         # パーセント計算
-        outrank = sum(
-            1 for r in grin_rows if (int(r[1]) if r[1] is not None else 0) < grincount
-        )
+        sql_percent = """
+        SELECT COUNT(*) FROM grin_user_stats WHERE total_grin_count < %s
+        """
+        percent_row = run_statdb_query(sql_percent, (grincount,), fetch="one")
+        outrank = int(percent_row[0]) if percent_row else 0
         percent = int(outrank * 100 / total) if total > 0 else 0
 
         data["rank"] = rank
         data["grincount"] = grincount
         data["percent"] = percent
         data["total"] = total
-        print(f"[Timer] - 全体ランキング取得: {time.time() - rank_start:.3f}秒")
 
-        # 2. 打率計算
-        batting_start = time.time()
-        # 総メッセージ数
-        sql_total = "SELECT COUNT(*) as total FROM messages WHERE author_id = %s"
-        row_total = run_statdb_query(sql_total, (user_id,), fetch="one")
-        total_messages = (
-            int(row_total[0]) if row_total and row_total[0] is not None else 0
+        timing_details["rank_total"] = time.time() - rank_start
+        timing_details["rank_cache_hit"] = False  # 集計テーブル使用
+        print(
+            f"[Timer] - 全体ランキング取得（集計テーブル）: {timing_details['rank_total']:.3f}秒"
         )
 
+        # 2. 打率計算（既に集計テーブルから取得済み）
+        batting_start = time.time()
+        batting_avg = (
+            (grin_messages * 100.0 / total_messages) if total_messages > 0 else 0.0
+        )
+        data["batting_avg"] = batting_avg
+        timing_details["batting_total"] = time.time() - batting_start
+        timing_details["batting_query1"] = 0.0  # 集計テーブルから取得
+        timing_details["batting_query2"] = 0.0
+        print(f"[Timer] - 打率計算: {timing_details['batting_total']:.3f}秒")
+
         # :grin:付きメッセージ数
+        query2_start = time.time()
         sql_grin = (
             "SELECT COUNT(DISTINCT r.message_id) as count "
             "FROM reactions r JOIN messages m ON r.message_id = m.id "
@@ -235,26 +269,32 @@ def get_grinrank_data(user_id: int) -> dict:
         )
         row_grin = run_statdb_query(sql_grin, (user_id,), fetch="one")
         grin_messages = int(row_grin[0]) if row_grin and row_grin[0] is not None else 0
+        timing_details["batting_query2"] = time.time() - query2_start
 
         batting_avg = (
             (grin_messages * 100.0 / total_messages) if total_messages > 0 else 0.0
         )
         data["batting_avg"] = batting_avg
-        print(f"[Timer] - 打率計算: {time.time() - batting_start:.3f}秒")
+        timing_details["batting_total"] = time.time() - batting_start
+        print(f"[Timer] - 打率計算: {timing_details['batting_total']:.3f}秒")
 
         # 3. 過去7日間のデータ取得
         daily_start = time.time()
         daily_data = get_daily_grin_data(user_id)
         data["daily_data"] = daily_data
-        print(f"[Timer] - 過去7日間データ取得: {time.time() - daily_start:.3f}秒")
+        timing_details["daily_total"] = time.time() - daily_start
+        print(f"[Timer] - 過去7日間データ取得: {timing_details['daily_total']:.3f}秒")
 
         # 4. 期間別ランキング
         period_start = time.time()
         period_ranks = get_period_rankings(user_id)
         data["period_ranks"] = period_ranks
-        print(f"[Timer] - 期間別ランキング取得: {time.time() - period_start:.3f}秒")
+        timing_details["period_total"] = time.time() - period_start
+        print(f"[Timer] - 期間別ランキング取得: {timing_details['period_total']:.3f}秒")
 
-        print(f"[Timer] - データ取得関数合計: {time.time() - func_start:.3f}秒")
+        timing_details["func_total"] = time.time() - func_start
+        data["_timing"] = timing_details
+        print(f"[Timer] - データ取得関数合計: {timing_details['func_total']:.3f}秒")
         return data
 
     except Exception as e:
@@ -267,16 +307,7 @@ def get_grinrank_data(user_id: int) -> dict:
 
 
 def get_daily_grin_data(user_id: int) -> dict:
-    """
-    過去7日間の日次データを取得
-
-    Returns:
-        dict: {
-            'dates': [日付リスト],
-            'grin_counts': [grin数リスト],
-            'batting_avgs': [打率リスト]
-        }
-    """
+    """過去7日間の日次grinデータを取得（集計テーブルgrin_daily_stats使用）"""
     try:
         # 参照データの最終日を取得
         row = run_db_query(
@@ -296,80 +327,49 @@ def get_daily_grin_data(user_id: int) -> dict:
 
         # 過去7日間の日付リストを生成
         dates = [(end_date - timedelta(days=i)) for i in range(6, -1, -1)]
-
-        # 日次grin数を取得
-        sql_grin = (
-            "SELECT DATE(m.timestamp) as date, SUM(r.count) as grincount "
-            "FROM reactions r JOIN messages m ON r.message_id = m.id "
-            "WHERE r.emoji_name = 'grin' AND m.author_id = %s "
-            "  AND DATE(m.timestamp) >= %s AND DATE(m.timestamp) <= %s "
-            "GROUP BY DATE(m.timestamp)"
-        )
         start_date = dates[0]
-        rows_grin = run_statdb_query(
-            sql_grin, (user_id, start_date, end_date), fetch="all"
-        )
 
-        grin_dict = {}
-        for row in rows_grin or []:
+        # 集計テーブルから取得
+        sql = """
+        SELECT date, grin_count, total_messages, grin_messages
+        FROM grin_daily_stats
+        WHERE user_id = %s AND date >= %s AND date <= %s
+        ORDER BY date
+        """
+
+        rows = run_statdb_query(sql, (user_id, start_date, end_date), fetch="all")
+
+        # データを辞書に変換
+        data_dict = {}
+        for row in rows or []:
             date_val = row[0]
             if isinstance(date_val, datetime):
                 date_val = date_val.date()
-            grin_dict[date_val] = int(row[1]) if row[1] is not None else 0
-
-        # 日次総メッセージ数を取得
-        sql_total = (
-            "SELECT DATE(timestamp) as date, COUNT(*) as total "
-            "FROM messages WHERE author_id = %s "
-            "  AND DATE(timestamp) >= %s AND DATE(timestamp) <= %s "
-            "GROUP BY DATE(timestamp)"
-        )
-        rows_total = run_statdb_query(
-            sql_total, (user_id, start_date, end_date), fetch="all"
-        )
-
-        total_dict = {}
-        for row in rows_total or []:
-            date_val = row[0]
-            if isinstance(date_val, datetime):
-                date_val = date_val.date()
-            total_dict[date_val] = int(row[1]) if row[1] is not None else 0
-
-        # 日次grin付きメッセージ数を取得
-        sql_grin_msg = (
-            "SELECT DATE(m.timestamp) as date, COUNT(DISTINCT r.message_id) as count "
-            "FROM reactions r JOIN messages m ON r.message_id = m.id "
-            "WHERE r.emoji_name = 'grin' AND m.author_id = %s "
-            "  AND DATE(m.timestamp) >= %s AND DATE(m.timestamp) <= %s "
-            "GROUP BY DATE(m.timestamp)"
-        )
-        rows_grin_msg = run_statdb_query(
-            sql_grin_msg, (user_id, start_date, end_date), fetch="all"
-        )
-
-        grin_msg_dict = {}
-        for row in rows_grin_msg or []:
-            date_val = row[0]
-            if isinstance(date_val, datetime):
-                date_val = date_val.date()
-            grin_msg_dict[date_val] = int(row[1]) if row[1] is not None else 0
+            data_dict[date_val] = {
+                "grin_count": int(row[1]) if row[1] else 0,
+                "total_messages": int(row[2]) if row[2] else 0,
+                "grin_messages": int(row[3]) if row[3] else 0,
+            }
 
         # 各日のデータを整理
         grin_counts = []
         batting_avgs = []
 
         for date in dates:
-            grin_count = grin_dict.get(date, 0)
-            total_msg = total_dict.get(date, 0)
-            grin_msg = grin_msg_dict.get(date, 0)
+            if date in data_dict:
+                day_data = data_dict[date]
+                grin_counts.append(day_data["grin_count"])
 
-            grin_counts.append(grin_count)
-
-            if total_msg > 0:
-                batting_avg = grin_msg * 100.0 / total_msg
+                if day_data["total_messages"] > 0:
+                    batting_avg = (
+                        day_data["grin_messages"] * 100.0 / day_data["total_messages"]
+                    )
+                else:
+                    batting_avg = 0.0
+                batting_avgs.append(batting_avg)
             else:
-                batting_avg = 0.0
-            batting_avgs.append(batting_avg)
+                grin_counts.append(0)
+                batting_avgs.append(0.0)
 
         return {
             "dates": dates,
@@ -391,15 +391,14 @@ def get_daily_grin_data(user_id: int) -> dict:
 
 def get_period_rankings(user_id: int) -> dict:
     """
-    期間別ランキングを取得（日間/週間/月間）
-    最適化版: 30日分のデータを1回のクエリで取得し、Python側でフィルタリング
-    キャッシュ有効期限: 10分
+    期間別ランキングを取得（日間/週間/月間）- 集計テーブルgrin_daily_stats使用
 
     Returns:
         dict: {
             'daily': {'rank': int, 'count': int},
             'weekly': {'rank': int, 'count': int},
-            'monthly': {'rank': int, 'count': int}
+            'monthly': {'rank': int, 'count': int},
+            '_cache_hit': False  # 集計テーブル使用
         }
     """
     try:
@@ -416,121 +415,105 @@ def get_period_rankings(user_id: int) -> dict:
                 else datetime.fromisoformat(str(row[0]))
             )
 
-        # キャッシュの確認
-        cache_file = os.path.join(CACHE_DIR, "period_rankings_raw.json")
-        cache_valid = False
-        cached_data = None
+        # 期間の定義
+        daily_start = (end_date - timedelta(days=1)).date()
+        weekly_start = (end_date - timedelta(days=7)).date()
+        monthly_start = (end_date - timedelta(days=30)).date()
 
-        if os.path.exists(cache_file):
-            try:
-                with open(cache_file, "r", encoding="utf-8") as f:
-                    cached_data = json.load(f)
-                    cache_timestamp = cached_data.get("timestamp", 0)
-                    cache_age = time.time() - cache_timestamp
-                    # 10分以内のキャッシュは有効
-                    if cache_age < 600:
-                        cache_valid = True
-                        if debug:
-                            print(
-                                f"[Cache] 期間別ランキングキャッシュ使用 (age: {cache_age:.1f}秒)"
-                            )
-            except Exception as e:
-                if debug:
-                    print(f"[Cache] キャッシュ読み込みエラー: {e}")
+        end_date_val = (
+            end_date
+            if isinstance(end_date, datetime)
+            else datetime.combine(end_date, datetime.min.time())
+        )
 
-        # キャッシュが有効な場合は使用
-        if cache_valid and cached_data:
-            all_user_data = cached_data.get("data", [])
-        else:
-            # 30日分のデータを1回のクエリで取得
-            start_date = end_date - timedelta(days=30)
-
-            sql = (
-                "SELECT m.author_id, m.timestamp, r.count "
-                "FROM reactions r JOIN messages m ON r.message_id = m.id "
-                "WHERE r.emoji_name = 'grin' AND m.timestamp >= %s AND m.timestamp <= %s"
-            )
-            rows = run_statdb_query(sql, (start_date, end_date), fetch="all") or []
-
-            # ユーザーごとに集計（author_id -> [(timestamp, count), ...]）
-            user_messages = {}
-            for row in rows:
-                try:
-                    author_id = int(row[0]) if row[0] is not None else 0
-                    timestamp = (
-                        row[1]
-                        if isinstance(row[1], datetime)
-                        else datetime.fromisoformat(str(row[1]))
-                    )
-                    count = int(row[2]) if row[2] is not None else 0
-
-                    if author_id not in user_messages:
-                        user_messages[author_id] = []
-                    user_messages[author_id].append((timestamp, count))
-                except Exception:
-                    continue
-
-            # 各ユーザーの期間別集計を事前計算
-            all_user_data = []
-            for author_id, messages in user_messages.items():
-                daily_count = 0
-                weekly_count = 0
-                monthly_count = 0
-
-                daily_start = end_date - timedelta(days=1)
-                weekly_start = end_date - timedelta(days=7)
-
-                for timestamp, count in messages:
-                    monthly_count += count
-                    if timestamp >= weekly_start:
-                        weekly_count += count
-                    if timestamp >= daily_start:
-                        daily_count += count
-
-                all_user_data.append(
-                    {
-                        "author_id": author_id,
-                        "daily": daily_count,
-                        "weekly": weekly_count,
-                        "monthly": monthly_count,
-                    }
-                )
-
-            # キャッシュに保存
-            try:
-                os.makedirs(CACHE_DIR, exist_ok=True)
-                with open(cache_file, "w", encoding="utf-8") as f:
-                    json.dump(
-                        {"timestamp": time.time(), "data": all_user_data},
-                        f,
-                        ensure_ascii=False,
-                    )
-                if debug:
-                    print("[Cache] 期間別ランキングをキャッシュに保存")
-            except Exception as e:
-                if debug:
-                    print(f"[Cache] キャッシュ保存エラー: {e}")
-
-        # 期間ごとにランキングを計算
         result = {}
-        for period_name in ["daily", "weekly", "monthly"]:
-            # 該当期間のカウントでソート
-            sorted_users = sorted(
-                all_user_data, key=lambda x: x[period_name], reverse=True
-            )
 
-            # ユーザーの順位とカウントを取得
-            user_count = 0
-            rank = 0
+        # デイリーランキング
+        sql_daily = """
+        SELECT
+            (SELECT COUNT(DISTINCT user_id) + 1 FROM grin_daily_stats
+             WHERE date = %s AND grin_count > (
+                SELECT COALESCE(grin_count, 0) FROM grin_daily_stats WHERE user_id = %s AND date = %s
+             )) as rank,
+            COALESCE((SELECT grin_count FROM grin_daily_stats WHERE user_id = %s AND date = %s), 0) as count
+        """
+        daily_row = run_statdb_query(
+            sql_daily,
+            (daily_start, user_id, daily_start, user_id, daily_start),
+            fetch="one",
+        )
+        result["daily"] = {
+            "rank": int(daily_row[0]) if daily_row else 0,
+            "count": int(daily_row[1]) if daily_row else 0,
+        }
 
-            for idx, user_data in enumerate(sorted_users):
-                if user_data["author_id"] == user_id:
-                    user_count = user_data[period_name]
-                    # 同じカウントを持つユーザーがいる場合、最高順位を付与
-                    rank = idx + 1
-                    break
+        # ウィークリーランキング
+        sql_weekly = """
+        SELECT
+            (SELECT COUNT(DISTINCT t2.user_id) + 1 FROM (
+                SELECT user_id, SUM(grin_count) as total FROM grin_daily_stats
+                WHERE date >= %s AND date <= %s
+                GROUP BY user_id
+            ) t2 WHERE t2.total > (
+                SELECT COALESCE(SUM(grin_count), 0) FROM grin_daily_stats
+                WHERE user_id = %s AND date >= %s AND date <= %s
+            )) as rank,
+            COALESCE((SELECT SUM(grin_count) FROM grin_daily_stats
+                      WHERE user_id = %s AND date >= %s AND date <= %s), 0) as count
+        """
+        weekly_row = run_statdb_query(
+            sql_weekly,
+            (
+                weekly_start,
+                end_date_val,
+                user_id,
+                weekly_start,
+                end_date_val,
+                user_id,
+                weekly_start,
+                end_date_val,
+            ),
+            fetch="one",
+        )
+        result["weekly"] = {
+            "rank": int(weekly_row[0]) if weekly_row else 0,
+            "count": int(weekly_row[1]) if weekly_row else 0,
+        }
 
-            result[period_name] = {"rank": rank, "count": user_count}
+        # マンスリーランキング
+        sql_monthly = """
+        SELECT
+            (SELECT COUNT(DISTINCT t2.user_id) + 1 FROM (
+                SELECT user_id, SUM(grin_count) as total FROM grin_daily_stats
+                WHERE date >= %s AND date <= %s
+                GROUP BY user_id
+            ) t2 WHERE t2.total > (
+                SELECT COALESCE(SUM(grin_count), 0) FROM grin_daily_stats
+                WHERE user_id = %s AND date >= %s AND date <= %s
+            )) as rank,
+            COALESCE((SELECT SUM(grin_count) FROM grin_daily_stats
+                      WHERE user_id = %s AND date >= %s AND date <= %s), 0) as count
+        """
+        monthly_row = run_statdb_query(
+            sql_monthly,
+            (
+                monthly_start,
+                end_date_val,
+                user_id,
+                monthly_start,
+                end_date_val,
+                user_id,
+                monthly_start,
+                end_date_val,
+            ),
+            fetch="one",
+        )
+        result["monthly"] = {
+            "rank": int(monthly_row[0]) if monthly_row else 0,
+            "count": int(monthly_row[1]) if monthly_row else 0,
+        }
+
+        result["_cache_hit"] = False  # 集計テーブル使用
 
         return result
 
@@ -718,6 +701,18 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
         bg.save(final_temp_path, "PNG")
         print(f"[Timer] - 画像保存: {time.time() - save_start:.3f}秒")
 
+        # グラフの一時ファイルを削除
+        try:
+            os.unlink(graph_path)
+        except Exception:
+            pass
+
+        total_image_time = time.time() - func_start
+        print(f"[Timer] - 画像生成関数合計: {total_image_time:.3f}秒")
+
+        return final_temp_path
+
+    except Exception:
         # グラフの一時ファイルを削除
         try:
             os.unlink(graph_path)

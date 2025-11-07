@@ -132,12 +132,12 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
         max_length=100,
     )
 
-    # リアクション数下限
-    min_reaction_input = ui.TextInput(
-        label="リアクション数下限（空欄でもOK）",
-        placeholder="例: 10",
+    # 絵文字検索
+    emoji_input = ui.TextInput(
+        label="絵文字検索（空欄でもOK）",
+        placeholder="例: grin:5,sob:2 または grin,sob",
         required=False,
-        max_length=10,
+        max_length=100,
     )
 
     # 日付（開始）
@@ -158,17 +158,13 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
 
     async def on_submit(self, interaction: discord.Interaction):
         """フォーム送信時の処理"""
-        from .utils import parse_date_input, parse_tags_input
+        from .utils import parse_date_input, parse_emoji_conditions, parse_tags_input
         from .views import SearchResultView
 
         # 入力値の取得
         title = self.title_input.value.strip() if self.title_input.value else None
         tags_str = self.tags_input.value.strip() if self.tags_input.value else None
-        min_reaction_str = (
-            self.min_reaction_input.value.strip()
-            if self.min_reaction_input.value
-            else None
-        )
+        emoji_str = self.emoji_input.value.strip() if self.emoji_input.value else None
         start_date_str = (
             self.start_date_input.value.strip() if self.start_date_input.value else None
         )
@@ -188,18 +184,18 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
                 return
             tags = parsed
 
-        # リアクション数のパース
-        min_reaction = None
-        if min_reaction_str:
-            try:
-                min_reaction = int(min_reaction_str)
-                if min_reaction < 0:
-                    raise ValueError
-            except ValueError:
+        # 絵文字条件のパース
+        emoji_conditions = []
+        if emoji_str:
+            parsed_emoji = parse_emoji_conditions(emoji_str)
+            if parsed_emoji is None:
                 await interaction.response.send_message(
-                    "リアクション数は正の整数で入力してください。", ephemeral=True
+                    "絵文字検索の形式が正しくありません。\n"
+                    "例: grin:5 または grin,sob または grin:3,sob:2",
+                    ephemeral=True,
                 )
                 return
+            emoji_conditions = parsed_emoji
 
         # 日付のパース
         start_date = None
@@ -233,7 +229,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
         search_conditions = {
             "title": title,
             "tags": tags,
-            "min_reaction": min_reaction,
+            "emoji_conditions": emoji_conditions,
             "start_date": start_date,
             "end_date": end_date,
         }

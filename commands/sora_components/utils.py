@@ -61,6 +61,67 @@ def parse_tags_input(tags_str: str) -> list[str] | None:
     return tags
 
 
+def parse_emoji_conditions(emoji_str: str) -> list[dict] | None:
+    """
+    絵文字検索条件をパース
+
+    入力形式:
+    - "grin:5" → [{"emoji": "grin", "min_count": 5}]
+    - "grin:3,sob:2" → [{"emoji": "grin", "min_count": 3}, {"emoji": "sob", "min_count": 2}]
+
+    Args:
+        emoji_str: 絵文字検索条件文字列
+
+    Returns:
+        絵文字条件のリスト、パース失敗時はNone
+    """
+    if not emoji_str or not emoji_str.strip():
+        return []
+
+    conditions = []
+    parts = [part.strip() for part in emoji_str.split(",")]
+
+    for part in parts:
+        if not part:
+            continue
+
+        # "emoji:count"形式かチェック
+        if ":" in part:
+            components = part.split(":", 1)
+            emoji_name = components[0].strip()
+            count_str = components[1].strip()
+
+            if not emoji_name:
+                return None
+
+            try:
+                min_count = int(count_str)
+                if min_count < 0:
+                    return None
+            except ValueError:
+                return None
+
+            conditions.append({"emoji": emoji_name, "min_count": min_count})
+        else:
+            # 絵文字名のみ
+            emoji_name = part.strip()
+            if not emoji_name:
+                return None
+
+            conditions.append({"emoji": emoji_name, "min_count": None})
+
+    # 最大5個まで
+    if len(conditions) > 5:
+        return None
+
+    # 絵文字名の長さチェック（最大30文字）
+    for condition in conditions:
+        if len(condition["emoji"]) > 30:
+            return None
+
+    return conditions
+
+
 def merge_tags(existing_tags: str, new_tags: list[str]) -> str:
     """
     既存のタグと新しいタグをマージ

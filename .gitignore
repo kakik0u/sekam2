@@ -10,7 +10,5 @@ spam/*
 spamer.txt
 discord-emojis.pretty.json
 database/*
-newgrinui.png
 web
 .ruff_cache
-chat_log.csv

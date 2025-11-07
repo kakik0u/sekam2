@@ -35,7 +35,8 @@ class MainMenuView(ui.View):
             "表示するランキングの種類を選択してください\n\n"
             "🌟 **総合ランキング**: 全期間のランキング\n"
             "📅 **デイリーランキング**: 特定の日のランキング\n"
-            "📆 **範囲指定**: 期間を指定してランキング"
+            "📆 **範囲指定**: 期間を指定してランキング\n"
+            "👁‍🗨 **AI恐山の国ランキング**: AI恐山の国タグの動画のみ"
         )
 
         await interaction.response.edit_message(content=message_content, view=view)
@@ -150,6 +151,16 @@ class RankingTypeSelectView(ui.View):
         # 日付入力Modalを表示
         modal = RangeDateModal()
         await interaction.response.send_modal(modal)
+
+    @ui.button(
+        label="AI恐山の国ランキング", style=discord.ButtonStyle.primary, emoji="👁‍🗨"
+    )
+    async def zanchi_ranking(self, interaction: discord.Interaction, button: ui.Button):
+        """AI恐山の国ランキング（日付選択）"""
+        # 日付選択Viewに遷移
+        view = zanchiRankingSelectView()
+        await interaction.response.defer()
+        await view.show(interaction)
 
 
 class DailyRankingSelectView(ui.View):
@@ -277,6 +288,135 @@ class DailyRankingSelectView(ui.View):
                 await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
 
 
+class zanchiRankingSelectView(ui.View):
+    """
+    AI恐山の国ランキング日付選択View
+    2025/10/1から昨日までの日付をセレクトボックスで表示（25個ずつページング）
+    自動的に「AI恐山の国」タグでフィルタリング
+    """
+
+    def __init__(self, page: int = 1):
+        super().__init__(timeout=180)
+        self.page = page
+        self.dates = []
+
+    def _get_date_list(self):
+        """2025/10/1から昨日までの日付リストを取得"""
+        from datetime import date, timedelta
+
+        start_date = date(2025, 10, 1)
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        dates = []
+        current = start_date
+        while current <= yesterday:
+            dates.append(current)
+            current += timedelta(days=1)
+
+        # 新しい日付順にソート
+        dates.reverse()
+        return dates
+
+    def _update_components(self):
+        """ボタンとセレクトの状態を更新"""
+        try:
+            # ページングボタンの有効/無効化
+            total_dates = len(self.dates)
+            total_pages = (total_dates + 24) // 25  # 25個ずつ
+
+            self.children[0].disabled = self.page == 1  # 前のページボタン
+            self.children[1].disabled = self.page >= total_pages  # 次のページボタン
+
+            # 日付セレクトの選択肢を更新
+            start_idx = (self.page - 1) * 25
+            end_idx = min(start_idx + 25, total_dates)
+            page_dates = self.dates[start_idx:end_idx]
+
+            options = []
+            for date_obj in page_dates:
+                date_str = date_obj.strftime("%Y/%m/%d")
+                label = f"{date_str} ({['月', '火', '水', '木', '金', '土', '日'][date_obj.weekday()]})"
+                options.append(discord.SelectOption(label=label, value=date_str))
+
+            self.children[2].options = options
+        except Exception as e:
+            print(f"[ERROR] zanchiRanking _update_components error: {e}")
+            import traceback
+
+            traceback.print_exc()
+
+    async def show(self, interaction: discord.Interaction, edit_message: bool = False):
+        """日付選択画面を表示"""
+        self.dates = self._get_date_list()
+
+        if not self.dates:
+            message = "AI恐山の国ランキングの対象日がありません。"
+            if edit_message:
+                await interaction.edit_original_response(content=message, view=None)
+            else:
+                await interaction.followup.send(message, ephemeral=True)
+            return
+
+        # ボタンとセレクトの更新
+        self._update_components()
+
+        total_dates = len(self.dates)
+        total_pages = (total_dates + 24) // 25
+
+        message_content = (
+            "👁‍🗨 **AI恐山の国ランキング - 日付選択**\n\n"
+            f"ランキングを表示する日付を選択してください\n"
+            f"（「AI恐山の国」タグがついた動画のみ表示されます）\n"
+            f"（ページ {self.page} / {total_pages}）"
+        )
+
+        if edit_message:
+            await interaction.edit_original_response(content=message_content, view=self)
+        else:
+            await interaction.followup.send(message_content, view=self, ephemeral=True)
+
+    @ui.button(label="前のページ", style=discord.ButtonStyle.secondary, emoji="⬅️")
+    async def prev_page(self, interaction: discord.Interaction, button: ui.Button):
+        """前のページを表示"""
+        if self.page > 1:
+            self.page -= 1
+            await interaction.response.defer()
+            await self.show(interaction, edit_message=True)
+
+    @ui.button(label="次のページ", style=discord.ButtonStyle.secondary, emoji="➡️")
+    async def next_page(self, interaction: discord.Interaction, button: ui.Button):
+        """次のページを表示"""
+        self.page += 1
+        await interaction.response.defer()
+        await self.show(interaction, edit_message=True)
+
+    @ui.select(placeholder="日付を選択", min_values=1, max_values=1)
+    async def date_select(self, interaction: discord.Interaction, select: ui.Select):
+        """日付選択後、絵文字選択に遷移（AI恐山の国タグ固定）"""
+        try:
+            # 選択された日付をパース
+            from datetime import datetime
+
+            date_str = select.values[0]
+            selected_date = datetime.strptime(date_str, "%Y/%m/%d")
+
+            # 絵文字選択Viewに遷移（AI恐山の国タグを自動設定）
+            view = EmojiSelectView(ranking_type="zanchi", selected_date=selected_date)
+            # AI恐山の国タグを事前設定
+            view.selected_tag = "AI恐山の国"
+
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
+        except Exception as e:
+            print(f"[ERROR] zanchiRanking date_select error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
+
+
 class EmojiSelectView(ui.View):
     """
     絵文字選択View
@@ -291,7 +431,7 @@ class EmojiSelectView(ui.View):
         before_date: datetime | None = None,
     ):
         super().__init__(timeout=180)
-        self.ranking_type = ranking_type  # "overall", "daily", "range"
+        self.ranking_type = ranking_type  # "overall", "daily", "range", "zanchi"
         self.selected_date = selected_date  # デイリーランキング用
         self.after_date = after_date  # 範囲指定用（開始日）
         self.before_date = before_date  # 範囲指定用（終了日）
@@ -327,7 +467,17 @@ class EmojiSelectView(ui.View):
 
     def _update_components(self):
         """タグセレクトの選択肢を更新"""
-        if len(self.tags) > 0:
+        # AI恐山の国ランキングの場合、タグセレクトを無効化
+        if self.ranking_type == "zanchi":
+            # タグセレクト（インデックス0）を無効化
+            if len(self.children) > 0:
+                self.children[0].disabled = True
+                self.children[0].options = [
+                    discord.SelectOption(
+                        label="AI恐山の国タグ固定", value="AI恐山の国", default=True
+                    )
+                ]
+        elif len(self.tags) > 0:
             # タグセレクトの選択肢を更新
             tag_options = [
                 discord.SelectOption(
@@ -342,16 +492,26 @@ class EmojiSelectView(ui.View):
                         label=tag, value=tag, default=self.selected_tag == tag
                     )
                 )
-            # タグセレクト（インデックス1）の選択肢を更新
-            if len(self.children) > 1:
-                self.children[1].options = tag_options
+            # タグセレクト（インデックス0）の選択肢を更新
+            if len(self.children) > 0:
+                self.children[0].disabled = False
+                self.children[0].options = tag_options
 
     async def show(self, interaction, edit_message=False):
         """Viewを表示"""
         await self.fetch_tags()
         self._update_components()
 
-        message_content = f"**{self.ranking_type}**\n絵文字を選択してください"
+        # ランキングタイプに応じたラベル表示
+        ranking_labels = {
+            "overall": "🌟 総合ランキング",
+            "daily": "📅 デイリーランキング",
+            "range": "📆 範囲指定ランキング",
+            "zanchi": "👁‍🗨 AI恐山の国ランキング",
+        }
+        ranking_label = ranking_labels.get(self.ranking_type, self.ranking_type)
+
+        message_content = f"**{ranking_label}**\n絵文字を選択してください"
         if self.selected_tag:
             message_content += f"\n🏷️ タグ絞り込み: {self.selected_tag}"
 
@@ -424,6 +584,16 @@ class EmojiSelectView(ui.View):
             )
             await interaction.response.defer()
             await view.show(interaction, edit_message=True)
+        elif self.ranking_type == "zanchi":
+            # AI恐山の国ランキング: 選択された日付で表示（AI恐山の国タグ固定）
+            view = RankingResultView(
+                emoji_name,
+                self.selected_date,
+                self.selected_date,
+                selected_tag=self.selected_tag,
+            )
+            await interaction.response.defer()
+            await view.show(interaction, edit_message=True)
         else:  # "range"
             # 範囲指定: 指定された日付範囲で表示
             view = RankingResultView(
@@ -464,15 +634,23 @@ class RankingResultView(ui.View):
 
     def _generate_ranking_label(self):
         """ランキング形式のラベルを生成"""
+        # AI恐山の国ランキングの判定
+        is_zanchi = self.selected_tag == "AI恐山の国"
+
         if self.before_date is None and self.after_date is None:
             self.ranking_type = f"総合ランキング:{self.emoji_name}:部門"
         elif self.before_date and self.after_date:
             # デイリーランキング判定：開始日と終了日が同じ
             if self.after_date.date() == self.before_date.date():
                 date_str = self.after_date.strftime("%Y/%m/%d")
-                self.ranking_type = (
-                    f"{date_str} デイリーランキング:{self.emoji_name}:部門"
-                )
+                if is_zanchi:
+                    self.ranking_type = (
+                        f"{date_str} AI恐山の国ランキング:{self.emoji_name}:部門"
+                    )
+                else:
+                    self.ranking_type = (
+                        f"{date_str} デイリーランキング:{self.emoji_name}:部門"
+                    )
             else:
                 # 範囲指定：ユーザーが入力した日付をそのまま表示
                 after_str = self.after_date.strftime("%Y/%m/%d")
@@ -731,6 +909,39 @@ class SearchResultView(ui.View):
             where_conditions.append("m.timestamp < %s")
             params.append(next_day)
 
+        # 絵文字条件の処理
+        if self.search_conditions.get("emoji_conditions"):
+            from utils.emoji import normalize_emoji_and_variants
+
+            emoji_conditions_list = []
+            for emoji_cond in self.search_conditions["emoji_conditions"]:
+                emoji_name = emoji_cond["emoji"]
+                min_count = emoji_cond["min_count"]
+
+                # 絵文字のバリアントを取得
+                base_name, tone_variants = normalize_emoji_and_variants(emoji_name)
+                placeholders = ", ".join(["%s"] * len(tone_variants))
+
+                if min_count is not None:
+                    # 特定数以上の条件
+                    emoji_conditions_list.append(
+                        f"EXISTS (SELECT 1 FROM reactions r2 WHERE r2.message_id = m.id "
+                        f"AND r2.emoji_name IN ({placeholders}) AND r2.count >= %s)"
+                    )
+                    params.extend(tone_variants)
+                    params.append(min_count)
+                else:
+                    # 存在チェックのみ
+                    emoji_conditions_list.append(
+                        f"EXISTS (SELECT 1 FROM reactions r2 WHERE r2.message_id = m.id "
+                        f"AND r2.emoji_name IN ({placeholders}))"
+                    )
+                    params.extend(tone_variants)
+
+            # OR条件で結合
+            if emoji_conditions_list:
+                where_conditions.append(f"({' OR '.join(emoji_conditions_list)})")
+
         # 動画ファイルが添付されている
         where_conditions.append(
             "EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND ("
@@ -739,11 +950,6 @@ class SearchResultView(ui.View):
             "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
             "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
         )
-
-        # リアクション数下限はHAVING句で処理
-        if self.search_conditions.get("min_reaction") is not None:
-            having_conditions.append("reaction_count >= %s")
-            params.append(self.search_conditions["min_reaction"])
 
         # ソート方式
         if self.sort_by == "reaction":

@@ -1,15 +1,14 @@
-"""
-SORAコマンド - Modalクラス群
+"""SORAコマンド - Modalクラス群
 ユーザー入力フォームとデータ検証を担当
 """
 
 from urllib.parse import quote
 
 import discord
+from database.connection import run_aidb_query
 from discord import ui
 
 from core.log import insert_command_log
-from database.connection import run_aidb_query
 
 from .utils import (
     parse_date_input,
@@ -20,8 +19,7 @@ from .utils import (
 
 
 class RankingDateModal(ui.Modal, title="ランキング期間指定"):
-    """
-    ランキング日付入力Modal
+    """ランキング日付入力Modal
     期間指定を受け付ける
     """
 
@@ -53,7 +51,8 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
         # 日付検証（開始日 > 終了日の場合のみエラー、同じ日付はOK）
         if after_date and before_date and after_date > before_date:
             await interaction.response.send_message(
-                "開始日は終了日以前である必要があります。", ephemeral=True
+                "開始日は終了日以前である必要があります。",
+                ephemeral=True,
             )
             return
 
@@ -66,8 +65,7 @@ class RankingDateModal(ui.Modal, title="ランキング期間指定"):
 
 
 class RangeDateModal(ui.Modal, title="ランキング期間指定"):
-    """
-    範囲指定ランキング用の日付入力Modal
+    """範囲指定ランキング用の日付入力Modal
     日付入力後、絵文字選択に遷移
     """
 
@@ -95,7 +93,8 @@ class RangeDateModal(ui.Modal, title="ランキング期間指定"):
         # 日付検証（開始日 > 終了日の場合のみエラー、同じ日付はOK）
         if after_date and before_date and after_date > before_date:
             await interaction.response.send_message(
-                "開始日は終了日以前である必要があります。", ephemeral=True
+                "開始日は終了日以前である必要があります。",
+                ephemeral=True,
             )
             return
 
@@ -103,7 +102,9 @@ class RangeDateModal(ui.Modal, title="ランキング期間指定"):
         from .views import EmojiSelectView
 
         view = EmojiSelectView(
-            ranking_type="range", after_date=after_date, before_date=before_date
+            ranking_type="range",
+            after_date=after_date,
+            before_date=before_date,
         )
 
         await interaction.response.defer()
@@ -111,8 +112,7 @@ class RangeDateModal(ui.Modal, title="ランキング期間指定"):
 
 
 class SearchConditionModal(ui.Modal, title="検索条件指定"):
-    """
-    検索条件入力Modal
+    """検索条件入力Modal
     タイトル、タグ、リアクション数下限を受け付ける
     """
 
@@ -220,7 +220,8 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
         # 日付の論理チェック
         if start_date and end_date and start_date > end_date:
             await interaction.response.send_message(
-                "開始日付は終了日付より前にしてください。", ephemeral=True
+                "開始日付は終了日付より前にしてください。",
+                ephemeral=True,
             )
             return
 
@@ -240,8 +241,7 @@ class SearchConditionModal(ui.Modal, title="検索条件指定"):
 
 
 class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
-    """
-    動画情報追加・編集Modal
+    """動画情報追加・編集Modal
     タイトル、タグを編集してmetaテーブルに保存
     """
 
@@ -335,7 +335,8 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
 
             if not success and not title and not tags:
                 await interaction.response.send_message(
-                    "何も入力されませんでした。", ephemeral=True
+                    "何も入力されませんでした。",
+                    ephemeral=True,
                 )
                 return
 
@@ -357,10 +358,13 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
 
             traceback.print_exc()
             insert_command_log(
-                interaction, "soraInfo", f"ERROR:{str(e)} 動画ID:{self.message_id}"
+                interaction,
+                "soraInfo",
+                f"ERROR:{e!s} 動画ID:{self.message_id}",
             )
             await interaction.response.send_message(
-                "情報の更新中にエラーが発生しました。", ephemeral=True
+                "情報の更新中にエラーが発生しました。",
+                ephemeral=True,
             )
 
         # DetailViewの表示を更新（rank=変更済み）
@@ -374,7 +378,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
             header_message = "\n".join(header_parts)
 
             encoded_comment = quote("変更済み")
-            watch_url = f"https://sekam.site/watch?v={self.message_id}&reaction={encoded_comment}&rank=変更済み"
+            watch_url = f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}&rank=変更済み"
 
             message_content = header_message + "\n\n" + watch_url
 
@@ -386,8 +390,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
 
 
 class VideoIdModal(ui.Modal, title="動画ID指定"):
-    """
-    動画ID入力Modal
+    """動画ID入力Modal
     メッセージIDを指定して動画を視聴
     """
 
@@ -406,7 +409,8 @@ class VideoIdModal(ui.Modal, title="動画ID指定"):
 
             if not video_id_str.isdigit():
                 await interaction.response.send_message(
-                    "動画IDは数字で入力してください。", ephemeral=True
+                    "動画IDは数字で入力してください。",
+                    ephemeral=True,
                 )
                 return
 
@@ -427,7 +431,8 @@ class VideoIdModal(ui.Modal, title="動画ID指定"):
 
             if not result:
                 await interaction.response.send_message(
-                    f"ID {message_id} の動画が見つかりませんでした。", ephemeral=True
+                    f"ID {message_id} の動画が見つかりませんでした。",
+                    ephemeral=True,
                 )
                 return
 
@@ -440,7 +445,8 @@ class VideoIdModal(ui.Modal, title="動画ID指定"):
 
         except ValueError:
             await interaction.response.send_message(
-                "無効な動画IDです。数字のみを入力してください。", ephemeral=True
+                "無効な動画IDです。数字のみを入力してください。",
+                ephemeral=True,
             )
         except Exception as e:
             print(f"[ERROR] VideoIdModal error: {e}")
@@ -448,5 +454,6 @@ class VideoIdModal(ui.Modal, title="動画ID指定"):
 
             traceback.print_exc()
             await interaction.response.send_message(
-                f"エラーが発生しました: {e}", ephemeral=True
+                f"エラーが発生しました: {e}",
+                ephemeral=True,
             )

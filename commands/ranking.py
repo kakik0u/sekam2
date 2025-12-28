@@ -1,18 +1,16 @@
-"""
-ランキング関連のコマンド群
-"""
+"""ランキング関連のコマンド群"""
 
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import discord
+from database.connection import run_aidb_query, run_statdb_query
 from discord import Client, app_commands
+from spam.protection import is_overload_allowed
 
 import config
 from core.log import insert_command_log
 from core.zichi import enforce_zichi_block
-from database.connection import run_aidb_query, run_statdb_query
-from spam.protection import is_overload_allowed
 from utils.cache import get_reference_data_label, load_json_cache, save_json_cache
 from utils.emoji import normalize_emoji_and_variants
 
@@ -29,7 +27,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/grinrank", "DENY_OVERLOAD")
                 return
@@ -37,7 +36,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
@@ -93,10 +94,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 embed.description = "対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
-                    f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+                    f"{username}の:grin:ランキング\n{reference_label}",
+                    embed=embed,
                 )
                 return
 
@@ -109,16 +111,17 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             if rank == 37:
                 embed = discord.Embed(
-                    title=f"おもしろ専科民ランキング{rank}位/{grincount}個の:grin:"
+                    title=f"おもしろ専科民ランキング{rank}位/{grincount}個の:grin:",
                 )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山だ。"
-                embed.set_image(url="https://death.kakikou.app/sekam/senka37.gif")
+                embed.set_image(url="https://example.app/sekam/senka37.gif")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
-                    f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+                    f"{username}の:grin:ランキング\n{reference_label}",
+                    embed=embed,
                 )
                 return
 
@@ -126,10 +129,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed.description = f"ユーザーの{percent}%を上回っています。"
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
             await ctx.followup.send(
-                f"{username}の:grin:ランキング\n{reference_label}", embed=embed
+                f"{username}の:grin:ランキング\n{reference_label}",
+                embed=embed,
             )
             insert_command_log(ctx, "/grinrank", "OK")
         except Exception as e:
@@ -138,11 +142,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/grinrank", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(name="allrank", description="すべてのリアクションの合計ランキング")
@@ -154,7 +160,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/allrank", "DENY_OVERLOAD")
                 return
@@ -162,7 +169,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
@@ -221,7 +230,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のリアクションランキング\n{reference_label}",
@@ -237,13 +246,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             if rank == 37:
                 embed = discord.Embed(
-                    title=f"反応されまくりランキング{rank}位/{mycount}個のリアクション"
+                    title=f"反応されまくりランキング{rank}位/{mycount}個のリアクション",
                 )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山のうちの一人だ。"
-                embed.set_image(url="https://death.kakikou.app/sekam/senka37.gif")
+                embed.set_image(url="https://example.app/sekam/senka37.gif")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のリアクションランキング\n{reference_label}",
@@ -255,10 +264,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed.description = f"ユーザーの{percent}%を上回っています。"
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
             await ctx.followup.send(
-                f"{username}のリアクションランキング\n{reference_label}", embed=embed
+                f"{username}のリアクションランキング\n{reference_label}",
+                embed=embed,
             )
             insert_command_log(ctx, "/allrank", "OK")
         except Exception as e:
@@ -267,11 +277,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/allrank", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(name="truthgrinrank", description="本当におもしろい専科民ランキング")
@@ -283,7 +295,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/truthgrinrank", "DENY_OVERLOAD")
                 return
@@ -291,7 +304,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
@@ -416,7 +431,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 desc = f'"モノホンの:grin:"においては、ユーザーの{truth_percent}%上回ってます\nお前が本物の恐山だ！！！'
 
                 embed = discord.Embed(title=title, description=desc)
-                embed.set_image(url="https://death.kakikou.app/sekam/realgrin37.gif")
+                embed.set_image(url="https://example.app/sekam/realgrin37.gif")
 
                 # Field1: 全体のgrin内訳
                 field1_lines = [
@@ -427,7 +442,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                     f'__{ratio_percent}%が"モノホン"の:grin:です__',
                 ]
                 embed.add_field(
-                    name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False
+                    name="全体のgrinの内訳",
+                    value="\n".join(field1_lines),
+                    inline=False,
                 )
 
                 # Field2: モノホン最多メッセージ
@@ -449,7 +466,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
 
                 header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
@@ -474,7 +491,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 f'__{ratio_percent}%が"モノホン"の:grin:です__',
             ]
             embed.add_field(
-                name="全体のgrinの内訳", value="\n".join(field1_lines), inline=False
+                name="全体のgrinの内訳",
+                value="\n".join(field1_lines),
+                inline=False,
             )
 
             # Field2: モノホン最多メッセージ
@@ -489,12 +508,14 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             else:
                 field2_desc = "対象のメッセージが見つかりませんでした。"
             embed.add_field(
-                name="モノホンの:grin:最多メッセージ:", value=field2_desc, inline=False
+                name="モノホンの:grin:最多メッセージ:",
+                value=field2_desc,
+                inline=False,
             )
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
 
             header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
@@ -506,11 +527,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/truthgrinrank", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(name="maxgrin", description="最多:grin:投稿を教えますよ")
@@ -522,7 +545,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/maxgrin", "DENY_OVERLOAD")
                 return
@@ -530,7 +554,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
@@ -553,7 +579,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             if not row:
                 await ctx.followup.send(
-                    "対象のメッセージが見つかりませんでした。", ephemeral=True
+                    "対象のメッセージが見つかりませんでした。",
+                    ephemeral=True,
                 )
                 return
 
@@ -564,7 +591,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             # 画像を取得（attachmentsテーブルから）
             attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
             attachment_row = run_statdb_query(
-                attachment_sql, (message_id,), fetch="one"
+                attachment_sql,
+                (message_id,),
+                fetch="one",
             )
             image_url = (
                 attachment_row[0] if attachment_row and attachment_row[0] else None
@@ -589,7 +618,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
 
             await ctx.followup.send(base_title, embed=embed)
@@ -600,11 +629,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/maxgrin", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(name="grinper", description="打率")
@@ -616,7 +647,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/grinper", "DENY_OVERLOAD")
                 return
@@ -624,7 +656,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
 
@@ -660,10 +694,11 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed = discord.Embed(title=title_percent)
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
             await ctx.followup.send(
-                f"{username}の:grin:打率\n{get_reference_data_label()}", embed=embed
+                f"{username}の:grin:打率\n{get_reference_data_label()}",
+                embed=embed,
             )
             insert_command_log(ctx, "/grinper", "OK")
         except Exception as e:
@@ -672,11 +707,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/grinper", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(
@@ -689,12 +726,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         if await enforce_zichi_block(ctx, "/maxreaction"):
             return
         print(
-            f"maxreactionコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), reaction={reaction}"
+            f"maxreactionコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), reaction={reaction}",
         )
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/maxreaction", "DENY_OVERLOAD")
                 return
@@ -702,7 +740,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
             reference_label = get_reference_data_label()
@@ -710,7 +750,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             base_name, tone_variants = normalize_emoji_and_variants(reaction)
             if not base_name or not tone_variants:
                 await ctx.followup.send(
-                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                    "絵文字（または絵文字名）を判別できませんでした。",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/maxreaction", "INVALID_EMOJI")
                 return
@@ -750,7 +791,9 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             # 画像を取得（attachmentsテーブルから）
             attachment_sql = "SELECT url FROM attachments WHERE message_id = %s LIMIT 1"
             attachment_row = run_statdb_query(
-                attachment_sql, (message_id,), fetch="one"
+                attachment_sql,
+                (message_id,),
+                fetch="one",
             )
             image_url = (
                 attachment_row[0] if attachment_row and attachment_row[0] else None
@@ -773,7 +816,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://d.kakikou.app/sekam2logo.png",
+                icon_url="https://example.app/sekam2logo.png",
             )
 
             await ctx.followup.send(base_title, embed=embed)
@@ -784,11 +827,13 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/maxreaction", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 await ctx.response.send_message(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
 
     @tree.command(name="airank", description="AI部門のリアクションランキングを表示")
@@ -810,7 +855,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
         # ユーザーID制限: 668479297551466516 のみ許可
         if ctx.user.id != 668479297551466516:
             await ctx.response.send_message(
-                "このコマンドの実行権限がありません。", ephemeral=True
+                "このコマンドの実行権限がありません。",
+                ephemeral=True,
             )
             insert_command_log(ctx, "/airank", "DENY_PERMISSION")
             return
@@ -819,7 +865,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             return
 
         print(
-            f"airankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), emoji={emoji}, before={before}, after={after}, page={page}"
+            f"airankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}), emoji={emoji}, before={before}, after={after}, page={page}",
         )
 
         try:
@@ -829,7 +875,8 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             base_name, tone_variants = normalize_emoji_and_variants(emoji)
             if not base_name or not tone_variants:
                 await ctx.followup.send(
-                    "絵文字（または絵文字名）を判別できませんでした。", ephemeral=True
+                    "絵文字（または絵文字名）を判別できませんでした。",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/airank", "INVALID_EMOJI")
                 return
@@ -861,8 +908,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                     return
 
             # ページ番号のバリデーション
-            if page < 1:
-                page = 1
+            page = max(page, 1)
 
             # SQLクエリの構築
             # emoji_nameで絞り込み + before/after条件 + 添付ファイルまたはsora.chatgpt.com含有チェック
@@ -887,7 +933,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
                 "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
                 "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
-                "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
+                "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))",
             )
 
             where_clause = " AND ".join(where_conditions)
@@ -927,7 +973,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 # before-1とafter+1の日付を計算
                 after_plus_one = (after_date + timedelta(days=1)).strftime("%Y/%m/%d")
                 before_minus_one = (before_date - timedelta(days=1)).strftime(
-                    "%Y/%m/%d"
+                    "%Y/%m/%d",
                 )
 
                 if after_plus_one == before_minus_one:
@@ -941,14 +987,14 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 ranking_type = f"{after_plus_one}以降:{base_name}:部門"
             else:  # before_date のみ
                 before_minus_one = (before_date - timedelta(days=1)).strftime(
-                    "%Y/%m/%d"
+                    "%Y/%m/%d",
                 )
                 ranking_type = f"{before_minus_one}まで:{base_name}:部門"
 
             # ヘッダーメッセージの構築
             header_parts = ["SEKAM統計所AI部", "専科AI動画", ranking_type]
             header_parts.append(
-                "-# データは前日までのものです。リアクション数は流動します。"
+                "-# データは前日までのものです。リアクション数は流動します。",
             )
             header_message = "\n".join(header_parts)
 
@@ -964,7 +1010,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 encoded_comment = quote(ranking_type)
 
                 # Web埋め込みAPIのURL生成
-                watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
+                watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
                 watch_urls.append(watch_url)
 
             # ヘッダーメッセージとURLを送信
@@ -982,12 +1028,14 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             insert_command_log(ctx, "/airank", f"ERROR:{e}")
             try:
                 await ctx.followup.send(
-                    "取得中にエラーが発生しました。", ephemeral=True
+                    "取得中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 try:
                     await ctx.response.send_message(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
                 except Exception:
                     pass

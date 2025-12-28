@@ -1,34 +1,33 @@
-"""
-グラフ生成コマンド
+"""グラフ生成コマンド
 /myreaction - リアクション分布グラフ
 /mylocate - チャンネル書き込み分布グラフ
 """
 
-import discord
-from discord import app_commands, Client
-from discord.app_commands import allowed_installs
 import os
 import tempfile
+
+import discord
 import matplotlib
+from discord import Client, app_commands
+from discord.app_commands import allowed_installs
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
+from database.connection import run_statdb_query
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
-
-from core.zichi import enforce_zichi_block
-from core.log import insert_command_log
 from spam.protection import is_overload_allowed
-from database.connection import run_statdb_query
+
+from config import debug
+from core.log import insert_command_log
+from core.zichi import enforce_zichi_block
 from utils.cache import get_reference_data_label
 from utils.emoji import emoji_name_to_unicode
-from config import debug
 
 
 class GraphPaginationView(discord.ui.View):
-    """
-    グラフのページング機能を提供するViewクラス
+    """グラフのページング機能を提供するViewクラス
     左右のボタンで表示範囲を変更可能
     """
 
@@ -40,13 +39,13 @@ class GraphPaginationView(discord.ui.View):
         graph_type: str,
         user_id: int,
     ):
-        """
-        Args:
-            all_data: 全データのリスト [(name, count), ...]
-            username: ユーザー名
-            reference_label: 参照データラベル
-            graph_type: 'channel' または 'reaction'
-            user_id: コマンドを実行したユーザーのID
+        """Args:
+        all_data: 全データのリスト [(name, count), ...]
+        username: ユーザー名
+        reference_label: 参照データラベル
+        graph_type: 'channel' または 'reaction'
+        user_id: コマンドを実行したユーザーのID
+
         """
         super().__init__(timeout=600.0)  # 10分でタイムアウト
         self.all_data = all_data
@@ -129,12 +128,18 @@ class GraphPaginationView(discord.ui.View):
             # グラフ生成
             if self.graph_type == "channel":
                 image_path = create_channel_graph(
-                    current_data, self.username, self.reference_label, status_text
+                    current_data,
+                    self.username,
+                    self.reference_label,
+                    status_text,
                 )
                 message_text = f"{self.username}の書き込み先チャンネル分布\n{self.reference_label} | {status_text}"
             else:  # reaction
                 image_path = create_reaction_graph(
-                    current_data, self.username, self.reference_label, status_text
+                    current_data,
+                    self.username,
+                    self.reference_label,
+                    status_text,
                 )
                 message_text = f"{self.username}のもらったリアクション分布\n{self.reference_label} | {status_text}"
 
@@ -143,10 +148,13 @@ class GraphPaginationView(discord.ui.View):
 
             # メッセージを更新
             file = discord.File(
-                image_path, filename=f"{self.graph_type}_distribution.png"
+                image_path,
+                filename=f"{self.graph_type}_distribution.png",
             )
             await interaction.edit_original_response(
-                content=message_text, attachments=[file], view=self
+                content=message_text,
+                attachments=[file],
+                view=self,
             )
 
             # 一時ファイルを削除
@@ -163,14 +171,17 @@ class GraphPaginationView(discord.ui.View):
                 traceback.print_exc()
             try:
                 await interaction.followup.send(
-                    "グラフの更新中にエラーが発生しました。", ephemeral=True
+                    "グラフの更新中にエラーが発生しました。",
+                    ephemeral=True,
                 )
             except Exception:
                 pass
 
     @discord.ui.button(label="前へ", style=discord.ButtonStyle.primary, emoji="◀️")
     async def prev_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """前のページに移動（10件飛ばし）"""
         if self.offset > 0:
@@ -179,7 +190,9 @@ class GraphPaginationView(discord.ui.View):
 
     @discord.ui.button(label="次へ", style=discord.ButtonStyle.primary, emoji="▶️")
     async def next_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """次のページに移動（10件飛ばし）"""
         if self.offset + 10 < len(self.all_data):
@@ -187,10 +200,14 @@ class GraphPaginationView(discord.ui.View):
             await self.update_graph(interaction)
 
     @discord.ui.button(
-        label="リセット", style=discord.ButtonStyle.secondary, emoji="🔄"
+        label="リセット",
+        style=discord.ButtonStyle.secondary,
+        emoji="🔄",
     )
     async def reset_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """最初のページに戻る"""
         if self.offset != 0:
@@ -198,10 +215,14 @@ class GraphPaginationView(discord.ui.View):
             await self.update_graph(interaction)
 
     @discord.ui.button(
-        label="その他: オン", style=discord.ButtonStyle.success, emoji="📊"
+        label="その他: オン",
+        style=discord.ButtonStyle.success,
+        emoji="📊",
     )
     async def toggle_others_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """その他の表示をオンオフ"""
         self.show_others = not self.show_others
@@ -214,10 +235,12 @@ class GraphPaginationView(discord.ui.View):
 
 
 def create_channel_graph(
-    data: list, username: str, reference_label: str, status_text: str = ""
+    data: list,
+    username: str,
+    reference_label: str,
+    status_text: str = "",
 ) -> str:
-    """
-    チャンネル統計データから縦棒グラフを生成し、背景画像と合成して画像ファイルを作成する。
+    """チャンネル統計データから縦棒グラフを生成し、背景画像と合成して画像ファイルを作成する。
 
     引数:
       data: [(channel_name, count), ...] のリスト（上位10個 + その他）
@@ -291,7 +314,8 @@ def create_channel_graph(
 
         # 背景画像と合成
         bg_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "bg/bg_green.png"
+            os.path.dirname(os.path.dirname(__file__)),
+            "bg/bg_green.png",
         )
         if os.path.exists(bg_path):
             # 背景画像を読み込み
@@ -306,18 +330,20 @@ def create_channel_graph(
             # 左右の余白を最小限にして横幅を最大化: 左右各40pxの余白で1200px
             max_graph_width = bg_width - 80  # 1280 - 80 = 1200px (左右各40px余白)
             max_graph_height = int(
-                bg_height * 0.70
+                bg_height * 0.70,
             )  # 背景の70%まで（下部に文字用余白確保）
 
             if graph_width > max_graph_width or graph_height > max_graph_height:
                 # アスペクト比を維持してリサイズ
                 ratio = min(
-                    max_graph_width / graph_width, max_graph_height / graph_height
+                    max_graph_width / graph_width,
+                    max_graph_height / graph_height,
                 )
                 new_width = int(graph_width * ratio)
                 new_height = int(graph_height * ratio)
                 graph_img = graph_img.resize(
-                    (new_width, new_height), Image.Resampling.LANCZOS
+                    (new_width, new_height),
+                    Image.Resampling.LANCZOS,
                 )
                 graph_width, graph_height = new_width, new_height
 
@@ -350,7 +376,10 @@ def create_channel_graph(
                 title_x = 50  # 左端から50px
                 title_y = 40
                 pilmoji.text(
-                    (title_x, title_y), title_text, font=title_font, fill="white"
+                    (title_x, title_y),
+                    title_text,
+                    font=title_font,
+                    fill="white",
                 )
 
                 # 参照ラベルを左下に描画
@@ -358,7 +387,10 @@ def create_channel_graph(
                 label_x = 50  # 左端から50px
                 label_y = bg_height - 60  # 下から60px
                 pilmoji.text(
-                    (label_x, label_y), clean_label, font=label_font, fill="white"
+                    (label_x, label_y),
+                    clean_label,
+                    font=label_font,
+                    fill="white",
                 )
 
                 # 状態テキストを表示（参照ラベルの一行上）
@@ -424,11 +456,10 @@ def create_channel_graph(
                 pass
 
             return final_temp_path
-        else:
-            # 背景画像がない場合はグラフのみ
-            if debug:
-                print("背景画像が見つかりません。グラフのみを使用します。")
-            return graph_temp_path
+        # 背景画像がない場合はグラフのみ
+        if debug:
+            print("背景画像が見つかりません。グラフのみを使用します。")
+        return graph_temp_path
 
     except Exception as e:
         if debug:
@@ -437,10 +468,12 @@ def create_channel_graph(
 
 
 def create_reaction_graph(
-    data: list, username: str, reference_label: str, status_text: str = ""
+    data: list,
+    username: str,
+    reference_label: str,
+    status_text: str = "",
 ) -> str:
-    """
-    リアクションデータから縦棒グラフを生成し、背景画像と合成して画像ファイルを作成する。
+    """リアクションデータから縦棒グラフを生成し、背景画像と合成して画像ファイルを作成する。
 
     引数:
       data: [(emoji_name, count), ...] のリスト（上位10個 + その他）
@@ -523,7 +556,8 @@ def create_reaction_graph(
 
         # 背景画像と合成
         bg_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "bg/bg_blue.png"
+            os.path.dirname(os.path.dirname(__file__)),
+            "bg/bg_blue.png",
         )
         if os.path.exists(bg_path):
             # 背景画像を読み込み
@@ -537,18 +571,20 @@ def create_reaction_graph(
             # グラフが背景より大きい場合はリサイズ
             max_graph_width = int(bg_width * 0.75)  # 背景の75%まで
             max_graph_height = int(
-                bg_height * 0.75
+                bg_height * 0.75,
             )  # 背景の75%まで（70%→75%に拡大、さらに36px削る）
 
             if graph_width > max_graph_width or graph_height > max_graph_height:
                 # アスペクト比を維持してリサイズ
                 ratio = min(
-                    max_graph_width / graph_width, max_graph_height / graph_height
+                    max_graph_width / graph_width,
+                    max_graph_height / graph_height,
                 )
                 new_width = int(graph_width * ratio)
                 new_height = int(graph_height * ratio)
                 graph_img = graph_img.resize(
-                    (new_width, new_height), Image.Resampling.LANCZOS
+                    (new_width, new_height),
+                    Image.Resampling.LANCZOS,
                 )
                 graph_width, graph_height = new_width, new_height
 
@@ -581,7 +617,10 @@ def create_reaction_graph(
                 title_x = 50  # 左端から50px
                 title_y = 40
                 pilmoji.text(
-                    (title_x, title_y), title_text, font=title_font, fill="white"
+                    (title_x, title_y),
+                    title_text,
+                    font=title_font,
+                    fill="white",
                 )
 
                 # 参照ラベルを左下に描画（-#を削除、枠線なし）
@@ -590,7 +629,10 @@ def create_reaction_graph(
                 label_x = 50  # 左端から50px
                 label_y = bg_height - 60  # 下から60px
                 pilmoji.text(
-                    (label_x, label_y), clean_label, font=label_font, fill="white"
+                    (label_x, label_y),
+                    clean_label,
+                    font=label_font,
+                    fill="white",
                 )
 
                 # 状態テキストを表示（参照ラベルの一行上）
@@ -619,7 +661,7 @@ def create_reaction_graph(
                 for i, label in enumerate(emoji_labels):
                     # 各ラベルの位置を計算（左から右へ）
                     label_x_pos = x_offset + int(
-                        left_margin + i * bar_width + bar_width / 2 - 16
+                        left_margin + i * bar_width + bar_width / 2 - 16,
                     )
 
                     # "その他"の場合は通常フォント、それ以外は絵文字として扱う
@@ -666,11 +708,10 @@ def create_reaction_graph(
                 pass
 
             return final_temp_path
-        else:
-            # 背景画像がない場合はグラフのみ
-            if debug:
-                print("背景画像が見つかりません。グラフのみを使用します。")
-            return graph_temp_path
+        # 背景画像がない場合はグラフのみ
+        if debug:
+            print("背景画像が見つかりません。グラフのみを使用します。")
+        return graph_temp_path
 
     except Exception as e:
         if debug:
@@ -679,12 +720,12 @@ def create_reaction_graph(
 
 
 async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
-    """
-    グラフコマンドを登録
+    """グラフコマンドを登録
 
     Args:
         tree: Discord CommandTree インスタンス
         client: Discord Client インスタンス (未使用だが統一のため)
+
     """
 
     @tree.command(
@@ -703,7 +744,8 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             # 過負荷モードチェック
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/myreaction", "DENY_OVERLOAD")
                 return
@@ -714,7 +756,9 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             # ユーザー情報取得
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
 
@@ -723,7 +767,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # SQLでリアクションデータを取得
             sql = """
-              SELECT 
+              SELECT
                 emoji_name,
                 SUM(count) as total_count
               FROM reactions r
@@ -744,7 +788,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のもらったリアクション分布\n{reference_label}",
@@ -762,7 +806,11 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # GraphPaginationViewを使用して初期グラフを作成
             view = GraphPaginationView(
-                all_data, username, reference_label, "reaction", uid
+                all_data,
+                username,
+                reference_label,
+                "reaction",
+                uid,
             )
 
             # 初期データを取得
@@ -771,7 +819,10 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # 初期グラフを生成
             image_path = create_reaction_graph(
-                current_data, username, reference_label, status_text
+                current_data,
+                username,
+                reference_label,
+                status_text,
             )
 
             # Discordに送信（Viewを追加）
@@ -800,11 +851,13 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             try:
                 if not ctx.response.is_done():
                     await ctx.response.send_message(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
                 else:
                     await ctx.followup.send(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
             except Exception:
                 pass
@@ -825,7 +878,8 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             # 過負荷モードチェック
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/mylocate", "DENY_OVERLOAD")
                 return
@@ -836,7 +890,9 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             # ユーザー情報取得
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
 
@@ -845,7 +901,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # SQLでチャンネル別投稿数を取得（全件取得）
             sql = """
-              SELECT 
+              SELECT
                 c.name as channel_name,
                 COUNT(*) as message_count
               FROM messages m
@@ -866,7 +922,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の書き込み先チャンネル分布\n{reference_label}",
@@ -884,7 +940,11 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # GraphPaginationViewを使用して初期グラフを作成
             view = GraphPaginationView(
-                all_data, username, reference_label, "channel", uid
+                all_data,
+                username,
+                reference_label,
+                "channel",
+                uid,
             )
 
             # 初期データを取得
@@ -893,7 +953,10 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
 
             # 初期グラフを生成
             image_path = create_channel_graph(
-                current_data, username, reference_label, status_text
+                current_data,
+                username,
+                reference_label,
+                status_text,
             )
 
             # Discordに送信（Viewを追加）
@@ -922,11 +985,13 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
             try:
                 if not ctx.response.is_done():
                     await ctx.response.send_message(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
                 else:
                     await ctx.followup.send(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
             except Exception:
                 pass

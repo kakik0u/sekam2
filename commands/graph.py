@@ -788,7 +788,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のもらったリアクション分布\n{reference_label}",
@@ -922,7 +922,7 @@ async def setup_graph_commands(tree: app_commands.CommandTree, client: Client):
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の書き込み先チャンネル分布\n{reference_label}",

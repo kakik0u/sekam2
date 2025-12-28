@@ -168,7 +168,7 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
                     description="チャンネルIDか、チャンネルのメッセージリンクをペーストしてください。",
                     color=discord.Color.blue(),
                 )
-                embed.set_image(url="https://example.app/guidemessage.png")
+                embed.set_image(url="https://example.com/guidemessage.png")
                 view = ChannelInputView(
                     ui,
                     range,

@@ -769,7 +769,7 @@ class RankingResultView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             rank = offset + idx + 1
-            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
+            watch_url = f"https://example.com/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)
@@ -1051,7 +1051,7 @@ class SearchResultView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             position = offset + idx + 1
-            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
+            watch_url = f"https://example.com/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)
@@ -1213,7 +1213,7 @@ class RandomPlayView(ui.View):
         # Watch URL生成（rankパラメータを削除）
         encoded_comment = quote("ランダム再生")
         watch_url = (
-            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.com/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1282,7 +1282,7 @@ class DetailView(ui.View):
         # Watch URL生成
         encoded_comment = quote("詳細表示")
         watch_url = (
-            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.com/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1524,7 +1524,7 @@ class VideoByIdView(ui.View):
         # Watch URL生成
         encoded_comment = quote("ID指定視聴")
         watch_url = (
-            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.com/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1637,7 +1637,7 @@ class MyPostsView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             position = offset + idx + 1
-            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
+            watch_url = f"https://example.com/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)

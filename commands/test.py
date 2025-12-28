@@ -87,7 +87,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:grin:ランキング（試験版）\n{reference_label}",
@@ -196,7 +196,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             await ctx.response.defer()
 
             # APIエンドポイント
-            api_url = "https://llm.example.app/v1/chat/completions"
+            api_url = "https://llm.example.com/v1/chat/completions"
 
             # リクエストボディ
             payload = {

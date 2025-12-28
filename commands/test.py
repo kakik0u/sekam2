@@ -1,5 +1,4 @@
-"""
-試験的なコマンド群
+"""試験的なコマンド群
 /test grinrank - 画像形式のgrinrankコマンド
 /test ai - AI チャットコマンド
 """
@@ -16,25 +15,25 @@ from discord import app_commands
 matplotlib.use("Agg")
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
+from database.connection import run_db_query, run_statdb_query
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
+from spam.protection import is_overload_allowed
 
 from config import debug
 from core.log import insert_command_log
 from core.zichi import enforce_zichi_block
-from database.connection import run_db_query, run_statdb_query
-from spam.protection import is_overload_allowed
 from utils.cache import get_reference_data_label
 
 
 async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Client):
     """試験コマンドを登録"""
-
     # /testグループを作成
     test_group = app_commands.Group(name="test", description="試験的な機能のコマンド群")
 
     @test_group.command(
-        name="grinrank", description="【試験】画像形式の:grin:ランキング"
+        name="grinrank",
+        description="【試験】画像形式の:grin:ランキング",
     )
     @app_commands.allowed_installs(guilds=True, users=True)
     async def test_grinrank(ctx: discord.Interaction):
@@ -52,7 +51,8 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             # 過負荷モードチェック
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/test grinrank", "DENY_OVERLOAD")
                 return
@@ -65,7 +65,9 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             # ユーザー情報取得
             user = getattr(ctx, "user", None) or getattr(ctx, "author", None)
             username = getattr(user, "display_name", None) or getattr(
-                user, "name", str(user)
+                user,
+                "name",
+                str(user),
             )
             uid = int(getattr(user, "id", 0) or 0)
 
@@ -80,11 +82,12 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
 
             if grinrank_data is None:
                 embed = discord.Embed(
-                    title="データなし", description="データが取得できませんでした。"
+                    title="データなし",
+                    description="データが取得できませんでした。",
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://d.kakikou.app/sekam2logo.png",
+                    icon_url="https://example.app/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:grin:ランキング（試験版）\n{reference_label}",
@@ -167,11 +170,13 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             try:
                 if not ctx.response.is_done():
                     await ctx.response.send_message(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
                 else:
                     await ctx.followup.send(
-                        "取得中にエラーが発生しました。", ephemeral=True
+                        "取得中にエラーが発生しました。",
+                        ephemeral=True,
                     )
             except Exception:
                 pass
@@ -191,7 +196,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             await ctx.response.defer()
 
             # APIエンドポイント
-            api_url = "https://llm.sekam.site/v1/chat/completions"
+            api_url = "https://llm.example.app/v1/chat/completions"
 
             # リクエストボディ
             payload = {
@@ -237,7 +242,8 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
 
                     if not ai_response:
                         await ctx.followup.send(
-                            "AIから返答が得られませんでした。", ephemeral=True
+                            "AIから返答が得られませんでした。",
+                            ephemeral=True,
                         )
                         insert_command_log(ctx, "/test ai", "ERROR:NO_RESPONSE")
                         return
@@ -248,7 +254,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
                         ai_response = ai_response[:1900] + "..."
 
                     await ctx.followup.send(
-                        f"**プロンプト:** {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n\n**AI恐山:**\n{ai_response}"
+                        f"**プロンプト:** {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n\n**AI恐山:**\n{ai_response}",
                     )
 
                     insert_command_log(ctx, "/test ai", "OK")
@@ -260,7 +266,8 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
 
                 traceback.print_exc()
             await ctx.followup.send(
-                "GPUサーバーがダウンしているか、ゲームに使われています", ephemeral=True
+                "GPUサーバーがダウンしているか、ゲームに使われています",
+                ephemeral=True,
             )
             insert_command_log(ctx, "/test ai", f"ERROR:NETWORK:{e}")
         except Exception as e:
@@ -273,7 +280,8 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             try:
                 if not ctx.response.is_done():
                     await ctx.response.send_message(
-                        "エラーが発生しました。", ephemeral=True
+                        "エラーが発生しました。",
+                        ephemeral=True,
                     )
                 else:
                     await ctx.followup.send("エラーが発生しました。", ephemeral=True)
@@ -285,8 +293,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
 
 
 def get_grinrank_data(user_id: int) -> dict:
-    """
-    grinrankに必要な全データを取得（集計テーブル使用版）
+    """grinrankに必要な全データを取得（集計テーブル使用版）
 
     Args:
         user_id: ユーザーID
@@ -294,6 +301,7 @@ def get_grinrank_data(user_id: int) -> dict:
     Returns:
         dict: 各種データを含む辞書、エラー時はNone
             timing情報も含まれる
+
     """
     try:
         import time
@@ -352,7 +360,7 @@ def get_grinrank_data(user_id: int) -> dict:
         timing_details["rank_total"] = time.time() - rank_start
         timing_details["rank_cache_hit"] = False  # 集計テーブル使用
         print(
-            f"[Timer] - 全体ランキング取得（集計テーブル）: {timing_details['rank_total']:.3f}秒"
+            f"[Timer] - 全体ランキング取得（集計テーブル）: {timing_details['rank_total']:.3f}秒",
         )
 
         # 2. 打率計算（既に集計テーブルから取得済み）
@@ -417,7 +425,9 @@ def get_daily_grin_data(user_id: int) -> dict:
     try:
         # 参照データの最終日を取得
         row = run_db_query(
-            "SELECT dblastupdate FROM config WHERE id = 1 LIMIT 1", (), fetch="one"
+            "SELECT dblastupdate FROM config WHERE id = 1 LIMIT 1",
+            (),
+            fetch="one",
         )
         if not row or row[0] is None:
             # デフォルトで今日
@@ -496,8 +506,7 @@ def get_daily_grin_data(user_id: int) -> dict:
 
 
 def get_period_rankings(user_id: int) -> dict:
-    """
-    期間別ランキングを取得（日間/週間/月間）- 集計テーブルgrin_daily_stats使用
+    """期間別ランキングを取得（日間/週間/月間）- 集計テーブルgrin_daily_stats使用
 
     Returns:
         dict: {
@@ -506,11 +515,14 @@ def get_period_rankings(user_id: int) -> dict:
             'monthly': {'rank': int, 'count': int},
             '_cache_hit': False  # 集計テーブル使用
         }
+
     """
     try:
         # 参照データの最終日を取得
         row = run_db_query(
-            "SELECT dblastupdate FROM config WHERE id = 1 LIMIT 1", (), fetch="one"
+            "SELECT dblastupdate FROM config WHERE id = 1 LIMIT 1",
+            (),
+            fetch="one",
         )
         if not row or row[0] is None:
             end_date = datetime.now()
@@ -637,8 +649,7 @@ def get_period_rankings(user_id: int) -> dict:
 
 
 def create_grinrank_image(data: dict, username: str, reference_label: str) -> str:
-    """
-    grinrankの画像を生成
+    """grinrankの画像を生成
 
     Args:
         data: get_grinrank_data()で取得したデータ
@@ -647,6 +658,7 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
 
     Returns:
         str: 生成された画像ファイルのパス
+
     """
     try:
         import time
@@ -671,7 +683,9 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
         # 背景画像を読み込み
         bg_load_start = time.time()
         bg_path = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "bg", "bg_grinrank.png"
+            os.path.dirname(os.path.dirname(__file__)),
+            "bg",
+            "bg_grinrank.png",
         )
         bg = Image.open(bg_path).convert("RGBA")
         bg_width, bg_height = bg.size
@@ -725,13 +739,19 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
             # 順位（ラベルなし）
             rank_text = f"{data['rank']}位"
             pilmoji.text(
-                (col1_x, col1_y_start + 50), rank_text, font=font_72, fill="white"
+                (col1_x, col1_y_start + 50),
+                rank_text,
+                font=font_72,
+                fill="white",
             )
 
             # 個数
             count_text = f"{data['grincount']}個"
             pilmoji.text(
-                (col1_x, col1_y_start + 140), count_text, font=font_60, fill="white"
+                (col1_x, col1_y_start + 140),
+                count_text,
+                font=font_60,
+                fill="white",
             )
 
             # パーセントのみ（"上位"は背景に含まれている）
@@ -755,10 +775,16 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
 
             pilmoji.text((col3_x, col3_y_start), daily_text, font=font_48, fill="white")
             pilmoji.text(
-                (col3_x, col3_y_start + 60), weekly_text, font=font_48, fill="white"
+                (col3_x, col3_y_start + 60),
+                weekly_text,
+                font=font_48,
+                fill="white",
             )
             pilmoji.text(
-                (col3_x, col3_y_start + 120), monthly_text, font=font_48, fill="white"
+                (col3_x, col3_y_start + 120),
+                monthly_text,
+                font=font_48,
+                fill="white",
             )
 
             # コラム4（右中央）- パーセントのみ（"打率"は背景に含まれている）
@@ -794,7 +820,10 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
             col5_x = bg_width - text_width - 30  # 右端から30pxの余白
 
             pilmoji.text(
-                (col5_x, col5_y_start + 70), date_only, font=font_24, fill="white"
+                (col5_x, col5_y_start + 70),
+                date_only,
+                font=font_24,
+                fill="white",
             )
 
         print(f"[Timer] - テキスト描画: {time.time() - text_start:.3f}秒")
@@ -838,8 +867,7 @@ def create_grinrank_image(data: dict, username: str, reference_label: str) -> st
 
 
 def create_daily_graph(dates: list, grin_counts: list, batting_avgs: list) -> str:
-    """
-    過去7日間のグラフを生成
+    """過去7日間のグラフを生成
 
     Args:
         dates: 日付リスト
@@ -848,6 +876,7 @@ def create_daily_graph(dates: list, grin_counts: list, batting_avgs: list) -> st
 
     Returns:
         str: グラフ画像ファイルのパス
+
     """
     try:
         # フォントパスの設定
@@ -864,7 +893,11 @@ def create_daily_graph(dates: list, grin_counts: list, batting_avgs: list) -> st
         # 棒グラフ（grin数）
         x_positions = range(len(date_labels))
         _bars = ax1.bar(
-            x_positions, grin_counts, color="#5865F2", width=0.6, label="Grin数"
+            x_positions,
+            grin_counts,
+            color="#5865F2",
+            width=0.6,
+            label="Grin数",
         )
         ax1.set_xlabel("日付", color="white")
         ax1.set_ylabel("Grin数", color="#5865F2")

@@ -1,5 +1,4 @@
-"""
-SORAコマンド - Viewクラス群
+"""SORAコマンド - Viewクラス群
 UI表示とインタラクション処理を担当
 """
 
@@ -8,14 +7,12 @@ from typing import Any
 from urllib.parse import quote
 
 import discord
-from discord import ui
-
 from database.connection import run_aidb_query
+from discord import ui
 
 
 class MainMenuView(ui.View):
-    """
-    初期メニューのView
+    """初期メニューのView
     3つのモード選択ボタンを表示
     """
 
@@ -23,7 +20,9 @@ class MainMenuView(ui.View):
         super().__init__(timeout=180)
 
     @ui.button(
-        label="ランキングを表示する", style=discord.ButtonStyle.primary, emoji="🏆"
+        label="ランキングを表示する",
+        style=discord.ButtonStyle.primary,
+        emoji="🏆",
     )
     async def show_ranking(self, interaction: discord.Interaction, button: ui.Button):
         """ランキングモードを開始"""
@@ -77,7 +76,8 @@ class MainMenuView(ui.View):
 
         if not result:
             await interaction.followup.send(
-                "動画が見つかりませんでした。", ephemeral=True
+                "動画が見つかりませんでした。",
+                ephemeral=True,
             )
             return
 
@@ -114,8 +114,7 @@ class MainMenuView(ui.View):
 
 
 class RankingTypeSelectView(ui.View):
-    """
-    ランキング種類選択View
+    """ランキング種類選択View
     総合・デイリー・範囲指定の3つのボタンを表示
     """
 
@@ -124,7 +123,9 @@ class RankingTypeSelectView(ui.View):
 
     @ui.button(label="総合ランキング", style=discord.ButtonStyle.primary, emoji="🌟")
     async def overall_ranking(
-        self, interaction: discord.Interaction, button: ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: ui.Button,
     ):
         """総合ランキング（全期間）"""
         # 絵文字選択Viewに遷移（日付指定なし）
@@ -134,7 +135,9 @@ class RankingTypeSelectView(ui.View):
         await view.show(interaction, edit_message=True)
 
     @ui.button(
-        label="デイリーランキング", style=discord.ButtonStyle.primary, emoji="📅"
+        label="デイリーランキング",
+        style=discord.ButtonStyle.primary,
+        emoji="📅",
     )
     async def daily_ranking(self, interaction: discord.Interaction, button: ui.Button):
         """デイリーランキング（日付選択）"""
@@ -153,7 +156,9 @@ class RankingTypeSelectView(ui.View):
         await interaction.response.send_modal(modal)
 
     @ui.button(
-        label="AI恐山の国ランキング", style=discord.ButtonStyle.primary, emoji="👁‍🗨"
+        label="AI恐山の国ランキング",
+        style=discord.ButtonStyle.primary,
+        emoji="👁‍🗨",
     )
     async def zanchi_ranking(self, interaction: discord.Interaction, button: ui.Button):
         """AI恐山の国ランキング（日付選択）"""
@@ -164,8 +169,7 @@ class RankingTypeSelectView(ui.View):
 
 
 class DailyRankingSelectView(ui.View):
-    """
-    デイリーランキング日付選択View
+    """デイリーランキング日付選択View
     2025/10/1から昨日までの日付をセレクトボックスで表示（25個ずつページング）
     """
 
@@ -289,8 +293,7 @@ class DailyRankingSelectView(ui.View):
 
 
 class zanchiRankingSelectView(ui.View):
-    """
-    AI恐山の国ランキング日付選択View
+    """AI恐山の国ランキング日付選択View
     2025/10/1から昨日までの日付をセレクトボックスで表示（25個ずつページング）
     自動的に「AI恐山の国」タグでフィルタリング
     """
@@ -418,8 +421,7 @@ class zanchiRankingSelectView(ui.View):
 
 
 class EmojiSelectView(ui.View):
-    """
-    絵文字選択View
+    """絵文字選択View
     ランキング用の絵文字を選択
     """
 
@@ -474,8 +476,10 @@ class EmojiSelectView(ui.View):
                 self.children[0].disabled = True
                 self.children[0].options = [
                     discord.SelectOption(
-                        label="AI恐山の国タグ固定", value="AI恐山の国", default=True
-                    )
+                        label="AI恐山の国タグ固定",
+                        value="AI恐山の国",
+                        default=True,
+                    ),
                 ]
         elif len(self.tags) > 0:
             # タグセレクトの選択肢を更新
@@ -484,13 +488,15 @@ class EmojiSelectView(ui.View):
                     label="タグ絞り込みなし",
                     value="none",
                     default=self.selected_tag is None,
-                )
+                ),
             ]
             for tag in self.tags:
                 tag_options.append(
                     discord.SelectOption(
-                        label=tag, value=tag, default=self.selected_tag == tag
-                    )
+                        label=tag,
+                        value=tag,
+                        default=self.selected_tag == tag,
+                    ),
                 )
             # タグセレクト（インデックス0）の選択肢を更新
             if len(self.children) > 0:
@@ -540,7 +546,8 @@ class EmojiSelectView(ui.View):
         except Exception as e:
             print(f"[ERROR] Tag select error: {e}")
             await interaction.response.send_message(
-                "エラーが発生しました。", ephemeral=True
+                "エラーが発生しました。",
+                ephemeral=True,
             )
 
     @ui.select(
@@ -551,12 +558,16 @@ class EmojiSelectView(ui.View):
             discord.SelectOption(label="grin", value="grin", emoji="😁"),
             discord.SelectOption(label="sob", value="sob", emoji="😭"),
             discord.SelectOption(
-                label="mo", value="mo", emoji="<:mo:1424391940782293157>"
+                label="mo",
+                value="mo",
+                emoji="<:mo:1424391940782293157>",
             ),
             discord.SelectOption(label="cool", value="cool", emoji="🆒"),
             discord.SelectOption(label="nerd", value="nerd", emoji="🤓"),
             discord.SelectOption(
-                label="raised_hands", value="raised_hands", emoji="🙌"
+                label="raised_hands",
+                value="raised_hands",
+                emoji="🙌",
             ),
             discord.SelectOption(label="older_man", value="older_man", emoji="👴"),
             discord.SelectOption(label="fearful", value="fearful", emoji="😨"),
@@ -570,7 +581,10 @@ class EmojiSelectView(ui.View):
         if self.ranking_type == "overall":
             # 総合ランキング: 日付指定なしで即座に表示
             view = RankingResultView(
-                emoji_name, None, None, selected_tag=self.selected_tag
+                emoji_name,
+                None,
+                None,
+                selected_tag=self.selected_tag,
             )
             await interaction.response.defer()
             await view.show(interaction, edit_message=True)
@@ -607,8 +621,7 @@ class EmojiSelectView(ui.View):
 
 
 class RankingResultView(ui.View):
-    """
-    ランキング結果表示View
+    """ランキング結果表示View
     5件のWatch URLとページング・選択機能
     """
 
@@ -698,7 +711,7 @@ class RankingResultView(ui.View):
             "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
             "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
             "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
-            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
+            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))",
         )
 
         where_clause = " AND ".join(where_conditions)
@@ -744,7 +757,7 @@ class RankingResultView(ui.View):
         if self.selected_tag:
             header_parts.append(f"🏷️ タグ絞り込み: {self.selected_tag}")
         header_parts.append(
-            "-# データは前日までのものです。リアクション数は流動します。"
+            "-# データは前日までのものです。リアクション数は流動します。",
         )
         header_message = "\n".join(header_parts)
 
@@ -756,7 +769,7 @@ class RankingResultView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             rank = offset + idx + 1
-            watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
+            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)
@@ -774,7 +787,7 @@ class RankingResultView(ui.View):
         """ボタンとセレクトの状態を更新"""
         try:
             print(
-                f"[DEBUG] _update_components called, page={self.page}, results={len(self.results)}"
+                f"[DEBUG] _update_components called, page={self.page}, results={len(self.results)}",
             )
             # ページングボタンの有効/無効化
             self.children[0].disabled = self.page == 1  # 前のページボタン
@@ -859,8 +872,7 @@ class RankingResultView(ui.View):
 
 
 class SearchResultView(ui.View):
-    """
-    検索結果表示View
+    """検索結果表示View
     5件のWatch URLとソート・ページング・選択機能
     """
 
@@ -926,7 +938,7 @@ class SearchResultView(ui.View):
                     # 特定数以上の条件
                     emoji_conditions_list.append(
                         f"EXISTS (SELECT 1 FROM reactions r2 WHERE r2.message_id = m.id "
-                        f"AND r2.emoji_name IN ({placeholders}) AND r2.count >= %s)"
+                        f"AND r2.emoji_name IN ({placeholders}) AND r2.count >= %s)",
                     )
                     params.extend(tone_variants)
                     params.append(min_count)
@@ -934,7 +946,7 @@ class SearchResultView(ui.View):
                     # 存在チェックのみ
                     emoji_conditions_list.append(
                         f"EXISTS (SELECT 1 FROM reactions r2 WHERE r2.message_id = m.id "
-                        f"AND r2.emoji_name IN ({placeholders}))"
+                        f"AND r2.emoji_name IN ({placeholders}))",
                     )
                     params.extend(tone_variants)
 
@@ -948,7 +960,7 @@ class SearchResultView(ui.View):
             "a.filename LIKE '%%.mp4' OR a.filename LIKE '%%.mov' OR "
             "a.filename LIKE '%%.avi' OR a.filename LIKE '%%.webm' OR "
             "a.filename LIKE '%%.mkv' OR a.filename LIKE '%%.flv' OR "
-            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))"
+            "a.filename LIKE '%%.wmv' OR a.filename LIKE '%%.m4v'))",
         )
 
         # ソート方式
@@ -1022,7 +1034,7 @@ class SearchResultView(ui.View):
             conditions.append(f"タグ: {', '.join(self.search_conditions['tags'])}")
         if self.search_conditions.get("min_reaction") is not None:
             conditions.append(
-                f"リアクション数: {self.search_conditions['min_reaction']}以上"
+                f"リアクション数: {self.search_conditions['min_reaction']}以上",
             )
 
         if conditions:
@@ -1039,7 +1051,7 @@ class SearchResultView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             position = offset + idx + 1
-            watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
+            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)
@@ -1057,7 +1069,7 @@ class SearchResultView(ui.View):
         """ボタンとセレクトの状態を更新"""
         try:
             print(
-                f"[DEBUG] Search _update_components, page={self.page}, results={len(self.results)}"
+                f"[DEBUG] Search _update_components, page={self.page}, results={len(self.results)}",
             )
             # ページングボタンの有効/無効化
             self.children[0].disabled = self.page == 1  # 前のページボタン
@@ -1073,7 +1085,7 @@ class SearchResultView(ui.View):
             for idx in range(len(self.results)):
                 position = offset + idx + 1
                 options.append(
-                    discord.SelectOption(label=f"{position}番目", value=str(idx))
+                    discord.SelectOption(label=f"{position}番目", value=str(idx)),
                 )
 
             self.children[3].options = options
@@ -1119,7 +1131,9 @@ class SearchResultView(ui.View):
         max_values=1,
         options=[
             discord.SelectOption(
-                label="リアクション数順", value="reaction", default=True
+                label="リアクション数順",
+                value="reaction",
+                default=True,
             ),
             discord.SelectOption(label=":grin:数順", value="grin"),
             discord.SelectOption(label="日付（新しい順）", value="date_desc"),
@@ -1182,8 +1196,7 @@ class SearchResultView(ui.View):
 
 
 class RandomPlayView(ui.View):
-    """
-    ランダム再生View
+    """ランダム再生View
     1件のWatch URLと次へ・情報追加ボタン
     """
 
@@ -1200,7 +1213,7 @@ class RandomPlayView(ui.View):
         # Watch URL生成（rankパラメータを削除）
         encoded_comment = quote("ランダム再生")
         watch_url = (
-            f"https://sekam.site/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1233,7 +1246,8 @@ class RandomPlayView(ui.View):
 
         if not result:
             await interaction.response.send_message(
-                "動画が見つかりませんでした。", ephemeral=True
+                "動画が見つかりませんでした。",
+                ephemeral=True,
             )
             return
 
@@ -1250,8 +1264,7 @@ class RandomPlayView(ui.View):
 
 
 class DetailView(ui.View):
-    """
-    詳細表示View
+    """詳細表示View
     1件のWatch URLと戻る・情報追加ボタン
     """
 
@@ -1269,7 +1282,7 @@ class DetailView(ui.View):
         # Watch URL生成
         encoded_comment = quote("詳細表示")
         watch_url = (
-            f"https://sekam.site/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1326,8 +1339,7 @@ class DetailView(ui.View):
 
 
 class TagListView(ui.View):
-    """
-    タグ一覧表示View
+    """タグ一覧表示View
     データベースに登録されているタグを集計して表示
     """
 
@@ -1416,7 +1428,7 @@ class TagListView(ui.View):
         """ボタンの状態を更新"""
         try:
             print(
-                f"[DEBUG] TagList _update_components, page={self.page}, tags={len(self.tags)}"
+                f"[DEBUG] TagList _update_components, page={self.page}, tags={len(self.tags)}",
             )
             # ページングボタンの有効/無効化
             self.children[0].disabled = self.page == 1  # 前のページボタン
@@ -1494,8 +1506,7 @@ class TagListView(ui.View):
 
 
 class VideoByIdView(ui.View):
-    """
-    動画ID指定視聴View
+    """動画ID指定視聴View
     指定されたIDの動画を表示
     """
 
@@ -1513,7 +1524,7 @@ class VideoByIdView(ui.View):
         # Watch URL生成
         encoded_comment = quote("ID指定視聴")
         watch_url = (
-            f"https://sekam.site/watch?v={self.message_id}&reaction={encoded_comment}"
+            f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}"
         )
 
         message_content = header_message + "\n\n" + watch_url
@@ -1534,8 +1545,7 @@ class VideoByIdView(ui.View):
 
 
 class MyPostsView(ui.View):
-    """
-    自分の投稿一覧View
+    """自分の投稿一覧View
     ユーザーの投稿を5件ずつページング表示
     """
 
@@ -1549,7 +1559,7 @@ class MyPostsView(ui.View):
         """ボタンとセレクトの状態を更新"""
         try:
             print(
-                f"[DEBUG] MyPosts _update_components, page={self.page}, results={len(self.results)}"
+                f"[DEBUG] MyPosts _update_components, page={self.page}, results={len(self.results)}",
             )
             # ページングボタンの有効/無効化
             self.children[0].disabled = self.page == 1  # 前のページボタン
@@ -1561,7 +1571,7 @@ class MyPostsView(ui.View):
             for idx in range(len(self.results)):
                 position = offset + idx + 1
                 options.append(
-                    discord.SelectOption(label=f"{position}番目", value=str(idx))
+                    discord.SelectOption(label=f"{position}番目", value=str(idx)),
                 )
 
             self.children[2].options = options
@@ -1627,7 +1637,7 @@ class MyPostsView(ui.View):
         for idx, row in enumerate(self.results):
             message_id = row[0]
             position = offset + idx + 1
-            watch_url = f"https://sekam.site/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
+            watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={position}"
             watch_urls.append(watch_url)
 
         message_content = header_message + "\n\n" + "\n".join(watch_urls)
@@ -1703,8 +1713,7 @@ class MyPostsView(ui.View):
 
 
 class PersistentDailyRankingButtonView(ui.View):
-    """
-    永続的なデイリーランキングボタンView
+    """永続的なデイリーランキングボタンView
     Bot再起動後も有効なボタンを提供
     ボタンクリック後はephemeralでDailyRankingSelectViewを表示
     """
@@ -1719,7 +1728,9 @@ class PersistentDailyRankingButtonView(ui.View):
         emoji="👁‍🗨",
     )
     async def show_daily_ranking(
-        self, interaction: discord.Interaction, button: ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: ui.Button,
     ):
         """デイリーランキング日付選択画面を表示（ephemeral）"""
         try:
@@ -1736,5 +1747,6 @@ class PersistentDailyRankingButtonView(ui.View):
             traceback.print_exc()
             if not interaction.response.is_done():
                 await interaction.response.send_message(
-                    "エラーが発生しました。もう一度お試しください。", ephemeral=True
+                    "エラーが発生しました。もう一度お試しください。",
+                    ephemeral=True,
                 )

@@ -93,7 +93,7 @@ async def setup_reaction_commands(
                 embed = discord.Embed(title=f"ランク外、0個の:{base_name}:")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
@@ -115,10 +115,10 @@ async def setup_reaction_commands(
                 embed = discord.Embed(
                     title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:",
                 )
-                embed.set_image(url="https://example.app/sekam/something37.gif")
+                embed.set_image(url="https://example.com/sekam/something37.gif")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
@@ -129,7 +129,7 @@ async def setup_reaction_commands(
             embed = discord.Embed(title=f"{rank}位/{my_total}個の:{base_name}:")
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}の:{base_name}:ランキング\n{get_reference_data_label()}",
@@ -236,7 +236,7 @@ async def setup_reaction_commands(
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}",
@@ -258,14 +258,14 @@ async def setup_reaction_commands(
                 embed = discord.Embed(
                     title=f"専科民ランキング{rank}位/{my_total}個の:{base_name}:をあげました",
                 )
-                embed.set_image(url="https://example.app/sekam/something37.gif")
+                embed.set_image(url="https://example.com/sekam/something37.gif")
             else:
                 embed = discord.Embed(
                     title=f"{rank}位/{my_total}個の:{base_name}:をあげました",
                 )
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}の:{base_name}:をあげた人ランキング\n{get_reference_data_label()}",
@@ -368,7 +368,7 @@ async def setup_reaction_commands(
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}",
@@ -388,7 +388,7 @@ async def setup_reaction_commands(
                 embed = discord.Embed(
                     title=f"笑顔の専科民ランキング{rank}位/{givegrincount}個の:grin:をあげました！！",
                 )
-                embed.set_image(url="https://example.app/sekam/smile37.gif")
+                embed.set_image(url="https://example.com/sekam/smile37.gif")
             else:
                 embed = discord.Embed(
                     title=f"{rank}位/{givegrincount}個の:grin:をあげました",
@@ -398,7 +398,7 @@ async def setup_reaction_commands(
             )
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}の:grin:をあげた人ランキング\n{get_reference_data_label()}",

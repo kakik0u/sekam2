@@ -94,7 +94,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 embed.description = "対象期間内にデータがありませんでした。\nある意味、人生としてはユーザーの100%を上回っています。"
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:grin:ランキング\n{reference_label}",
@@ -114,10 +114,10 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                     title=f"おもしろ専科民ランキング{rank}位/{grincount}個の:grin:",
                 )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山だ。"
-                embed.set_image(url="https://example.app/sekam/senka37.gif")
+                embed.set_image(url="https://example.com/sekam/senka37.gif")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}の:grin:ランキング\n{reference_label}",
@@ -129,7 +129,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed.description = f"ユーザーの{percent}%を上回っています。"
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}の:grin:ランキング\n{reference_label}",
@@ -230,7 +230,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 )
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のリアクションランキング\n{reference_label}",
@@ -249,10 +249,10 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                     title=f"反応されまくりランキング{rank}位/{mycount}個のリアクション",
                 )
                 embed.description = f"ユーザーの{percent}%を上回っています。\nおめでとう、君が専科の恐山のうちの一人だ。"
-                embed.set_image(url="https://example.app/sekam/senka37.gif")
+                embed.set_image(url="https://example.com/sekam/senka37.gif")
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
                 await ctx.followup.send(
                     f"{username}のリアクションランキング\n{reference_label}",
@@ -264,7 +264,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed.description = f"ユーザーの{percent}%を上回っています。"
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}のリアクションランキング\n{reference_label}",
@@ -431,7 +431,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 desc = f'"モノホンの:grin:"においては、ユーザーの{truth_percent}%上回ってます\nお前が本物の恐山だ！！！'
 
                 embed = discord.Embed(title=title, description=desc)
-                embed.set_image(url="https://example.app/sekam/realgrin37.gif")
+                embed.set_image(url="https://example.com/sekam/realgrin37.gif")
 
                 # Field1: 全体のgrin内訳
                 field1_lines = [
@@ -466,7 +466,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
                 embed.set_footer(
                     text="SEKAM2 - SEKAMの2",
-                    icon_url="https://example.app/sekam2logo.png",
+                    icon_url="https://example.com/sekam2logo.png",
                 )
 
                 header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
@@ -515,7 +515,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
 
             header = f'{username}の**"モノホン"**:grin:統計\n{reference_label}'
@@ -618,7 +618,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
 
             await ctx.followup.send(base_title, embed=embed)
@@ -694,7 +694,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
             embed = discord.Embed(title=title_percent)
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
             await ctx.followup.send(
                 f"{username}の:grin:打率\n{get_reference_data_label()}",
@@ -816,7 +816,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
 
             embed.set_footer(
                 text="SEKAM2 - SEKAMの2",
-                icon_url="https://example.app/sekam2logo.png",
+                icon_url="https://example.com/sekam2logo.png",
             )
 
             await ctx.followup.send(base_title, embed=embed)
@@ -1010,7 +1010,7 @@ async def setup_ranking_commands(tree: app_commands.CommandTree, client: Client)
                 encoded_comment = quote(ranking_type)
 
                 # Web埋め込みAPIのURL生成
-                watch_url = f"https://example.app/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
+                watch_url = f"https://example.com/watch?v={message_id}&reaction={encoded_comment}&rank={rank}位"
                 watch_urls.append(watch_url)
 
             # ヘッダーメッセージとURLを送信

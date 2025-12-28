@@ -378,7 +378,7 @@ class InfoEditModal(ui.Modal, title="動画情報の追加・編集"):
             header_message = "\n".join(header_parts)
 
             encoded_comment = quote("変更済み")
-            watch_url = f"https://example.app/watch?v={self.message_id}&reaction={encoded_comment}&rank=変更済み"
+            watch_url = f"https://example.com/watch?v={self.message_id}&reaction={encoded_comment}&rank=変更済み"
 
             message_content = header_message + "\n\n" + watch_url
 

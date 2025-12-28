@@ -124,7 +124,7 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
             period_ranks = grinrank_data.get("period_ranks", {})
             period_cache = period_ranks.get("_cache_hit", False)
 
-            timing_summary = (
+            _ = (
                 f"**デバッグ用**\n"
                 f"```\n"
                 f"総処理時間:        {total_time:.2f}秒\n"
@@ -140,7 +140,6 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
                 f"└─ Discord送信:     {send_duration:.2f}秒\n"
                 f"```"
             )
-            print(timing_summary)
 
             await ctx.followup.send(
                 f"{username}の:grin:ランキング（試験版）\n{reference_label}",

@@ -172,7 +172,7 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             else:
                 user_id = None
                 channel_id = ctx.channel.id
-                scope_name = f"
+                scope_name = f"#{ctx.channel.name}"
             if is_time_specified:
                 embed = discord.Embed(
                     title="🗓 時間指定",
@@ -269,7 +269,7 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             else:
                 user_id = None
                 channel_id = ctx.channel.id
-                scope_name = f"
+                scope_name = f"#{ctx.channel.name}"
             if range == "全期間":
                 year_start = None
                 year_end = None
@@ -733,14 +733,14 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
             try:
                 channel = interaction.client.get_channel(channel_id)
                 if channel and hasattr(channel, "name"):
-                    scope_name = f"
+                    scope_name = f"#{channel.name}"
             except Exception:
                 pass
             if scope_name is None:
                 try:
                     channel = await interaction.client.fetch_channel(channel_id)
                     if channel and hasattr(channel, "name"):
-                        scope_name = f"
+                        scope_name = f"#{channel.name}"
                 except Exception:
                     pass
             if scope_name is None:
@@ -749,7 +749,7 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
                     sql = "SELECT name FROM channels WHERE id = %s"
                     result = run_statdb_query(sql, (channel_id,), fetch="one")
                     if result and result[0]:
-                        scope_name = f"
+                        scope_name = f"#{result[0]}"
                 except Exception:
                     pass
             if channel_id == 0:
@@ -1390,7 +1390,7 @@ async def generate_wordcloud_image_pillow(
         img.save(output, format="PNG")
         output.seek(0)
         return output.read()
-    img = Image.new("RGB", (width, height), color="
+    img = Image.new("RGB", (width, height), color="white")
     draw = ImageDraw.Draw(img)
     try:
         font_sizes = {
@@ -1425,16 +1425,16 @@ async def generate_wordcloud_image_pillow(
                 "tiny": default_font,
             }
     colors = [
-        "
-        "
-        "
-        "
-        "
-        "
-        "
-        "
-        "
-        "
+        "#ff4d6d",
+        "#ff7b00",
+        "#ffb703",
+        "#ffd166",
+        "#06d6a0",
+        "#118ab2",
+        "#073b4c",
+        "#8338ec",
+        "#ff6b6b",
+        "#3a86ff",
     ]
     max_count = float(word_data[0][1]) if word_data else 1.0
     min_count = float(word_data[-1][1]) if word_data else 1.0
@@ -1593,7 +1593,7 @@ async def generate_wordcloud_image_wordcloud(
     wc = WordCloud(
         width=width,
         height=height,
-        background_color="
+        background_color="white",
         max_words=max_words,
         font_path=font_path,
         min_font_size=10,

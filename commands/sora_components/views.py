@@ -1700,3 +1700,41 @@ class MyPostsView(ui.View):
             traceback.print_exc()
             if not interaction.response.is_done():
                 await interaction.response.send_message(f"エラー: {e}", ephemeral=True)
+
+
+class PersistentDailyRankingButtonView(ui.View):
+    """
+    永続的なデイリーランキングボタンView
+    Bot再起動後も有効なボタンを提供
+    ボタンクリック後はephemeralでDailyRankingSelectViewを表示
+    """
+
+    def __init__(self):
+        super().__init__(timeout=None)  # タイムアウトなし（永続的）
+
+    @ui.button(
+        label="AI恐山の国のデイリーランキングを見る",
+        style=discord.ButtonStyle.primary,
+        custom_id="persistent_daily_ranking_button",  # 永続化のためのカスタムID
+        emoji="👁‍🗨",
+    )
+    async def show_daily_ranking(
+        self, interaction: discord.Interaction, button: ui.Button
+    ):
+        """デイリーランキング日付選択画面を表示（ephemeral）"""
+        try:
+            await interaction.response.defer(ephemeral=True)
+
+            # DailyRankingSelectViewを表示
+            view = zanchiRankingSelectView()
+            await view.show(interaction, edit_message=False)
+
+        except Exception as e:
+            print(f"[ERROR] PersistentDailyRanking button error: {e}")
+            import traceback
+
+            traceback.print_exc()
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "エラーが発生しました。もう一度お試しください。", ephemeral=True
+                )

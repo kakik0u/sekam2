@@ -4,6 +4,7 @@ SEKAM2 Configファイル
 
 import os
 import re
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -50,3 +51,11 @@ TONE_SUFFIX_RE = re.compile(
 _CUSTOM_EMOJI_RE = re.compile(r"^<:([A-Za-z0-9_]+):\d+>$")
 
 EMOJI_JSON_PATH = os.path.join(os.path.dirname(__file__), "discord-emojis.pretty.json")
+
+REWIND_TOKEN_JSON_PATH = os.getenv("REWIND_TOKEN_JSON_PATH")
+
+REWIND_VIDEO_DIR = os.getenv("REWIND_VIDEO_DIR")
+
+REWIND_BASE_URL = os.getenv("REWIND_BASE_URL")
+
+REWIND_NOTIFY_WEBHOOK_URL = os.getenv("REWIND_NOTIFY_WEBHOOK_URL")

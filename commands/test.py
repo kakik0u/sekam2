@@ -1,12 +1,14 @@
 """
 試験的なコマンド群
 /test grinrank - 画像形式のgrinrankコマンド
+/test ai - AI チャットコマンド
 """
 
 import os
 import tempfile
 from datetime import datetime, timedelta
 
+import aiohttp
 import discord
 import matplotlib
 from discord import app_commands
@@ -172,6 +174,110 @@ async def setup_test_commands(tree: app_commands.CommandTree, client: discord.Cl
                     await ctx.followup.send(
                         "取得中にエラーが発生しました。", ephemeral=True
                     )
+            except Exception:
+                pass
+
+    @test_group.command(name="ai", description="【試験】AIとチャットする")
+    @app_commands.allowed_installs(guilds=True, users=True)
+    @app_commands.describe(prompt="AIに送信するメッセージ")
+    async def test_ai(ctx: discord.Interaction, prompt: str):
+        """AI チャット機能（試験版）"""
+        if await enforce_zichi_block(ctx, "/test ai"):
+            return
+
+        print(f"test aiコマンドが実行されました: {ctx.user.name} ({ctx.user.id})")
+
+        try:
+            # 処理開始を通知
+            await ctx.response.defer()
+
+            # APIエンドポイント
+            api_url = "https://llm.sekam.site/v1/chat/completions"
+
+            # リクエストボディ
+            payload = {
+                "model": "vinchanai@q8_0",
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "max_tokens": 75,
+            }
+
+            # HTTPリクエスト送信
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    api_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as response:
+                    if response.status == 404:
+                        await ctx.followup.send(
+                            "GPUサーバーがダウンしているか、ゲームに使われています",
+                            ephemeral=True,
+                        )
+                        insert_command_log(ctx, "/test ai", "ERROR:404")
+                        return
+
+                    if response.status != 200:
+                        await ctx.followup.send(
+                            f"GPUサーバーがダウンしているか、ゲームに使われています (Status: {response.status})",
+                            ephemeral=True,
+                        )
+                        insert_command_log(ctx, "/test ai", f"ERROR:{response.status}")
+                        return
+
+                    # レスポンス取得
+                    data = await response.json()
+
+                    # AIの返答を取得
+                    ai_response = (
+                        data.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                    )
+
+                    if not ai_response:
+                        await ctx.followup.send(
+                            "AIから返答が得られませんでした。", ephemeral=True
+                        )
+                        insert_command_log(ctx, "/test ai", "ERROR:NO_RESPONSE")
+                        return
+
+                    # 返答を送信
+                    # Discordのメッセージ長制限（2000文字）を考慮
+                    if len(ai_response) > 1900:
+                        ai_response = ai_response[:1900] + "..."
+
+                    await ctx.followup.send(
+                        f"**プロンプト:** {prompt[:100]}{'...' if len(prompt) > 100 else ''}\n\n**AI恐山:**\n{ai_response}"
+                    )
+
+                    insert_command_log(ctx, "/test ai", "OK")
+
+        except aiohttp.ClientError as e:
+            if debug:
+                print(f"test ai ネットワークエラー: {e}")
+                import traceback
+
+                traceback.print_exc()
+            await ctx.followup.send(
+                "GPUサーバーがダウンしているか、ゲームに使われています", ephemeral=True
+            )
+            insert_command_log(ctx, "/test ai", f"ERROR:NETWORK:{e}")
+        except Exception as e:
+            if debug:
+                print(f"test aiエラー: {e}")
+                import traceback
+
+                traceback.print_exc()
+            insert_command_log(ctx, "/test ai", f"ERROR:{e}")
+            try:
+                if not ctx.response.is_done():
+                    await ctx.response.send_message(
+                        "エラーが発生しました。", ephemeral=True
+                    )
+                else:
+                    await ctx.followup.send("エラーが発生しました。", ephemeral=True)
             except Exception:
                 pass
 

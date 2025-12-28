@@ -18,6 +18,7 @@ from .views import (
     DetailView,
     EmojiSelectView,
     MainMenuView,
+    PersistentDailyRankingButtonView,
     RandomPlayView,
     RankingResultView,
     SearchResultView,
@@ -31,6 +32,7 @@ __all__ = [
     "SearchResultView",
     "RandomPlayView",
     "DetailView",
+    "PersistentDailyRankingButtonView",
     # Modals
     "RankingDateModal",
     "SearchConditionModal",

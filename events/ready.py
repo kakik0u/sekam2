@@ -5,6 +5,8 @@ on_ready イベントハンドラ
 import discord
 
 from bot import setup_custom_dns
+from commands.rewind import PersistentRewindButtonView
+from commands.sora_components import PersistentDailyRankingButtonView
 from fileutil import loadtxt
 
 
@@ -20,6 +22,11 @@ def setup_ready_event(client: discord.Client):
     async def on_ready():
         print("SEKAM2起動したンゴねぇ")
         await setup_custom_dns()
+
+        # 永続的なViewを登録
+        client.add_view(PersistentDailyRankingButtonView())
+        client.add_view(PersistentRewindButtonView())
+        print("PersistentViewOK")
 
         # await tree.sync()
         print("SyncEnd")

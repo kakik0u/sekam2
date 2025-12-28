@@ -3,14 +3,15 @@ on_member_join イベントハンドラ
 """
 
 import os
+
 import discord
 import requests
 
 from config import debug
+from core.log import insert_log
 from database.connection import run_db_query
 from spam.protection import spamban
 from spam.settings import get_setting_value
-from core.log import insert_log
 
 
 def setup_member_events(client: discord.Client):

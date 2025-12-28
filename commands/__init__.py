@@ -7,11 +7,14 @@ from discord import Client, app_commands
 from .admin import setup_admin_commands
 from .graph import setup_graph_commands
 from .misc import setup_misc_commands
+from .morpheme import setup_morpheme_commands
 from .ranking import setup_ranking_commands
 from .reaction import setup_reaction_commands
+from .rewind import setup_rewind_commands
 from .settings import setup_settings_commands
 from .sora import setup_sora_commands
 from .test import setup_test_commands
+from .vote import setup_vote_commands
 
 __all__ = [
     "setup_admin_commands",
@@ -22,6 +25,9 @@ __all__ = [
     "setup_misc_commands",
     "setup_test_commands",
     "setup_sora_commands",
+    "setup_morpheme_commands",
+    "setup_vote_commands",
+    "setup_rewind_commands",
     "setup_all_commands",
 ]
 
@@ -42,3 +48,6 @@ async def setup_all_commands(tree: app_commands.CommandTree, client: Client):
     await setup_misc_commands(tree, client)
     await setup_test_commands(tree, client)
     await setup_sora_commands(tree, client)
+    await setup_morpheme_commands(tree, client)
+    await setup_vote_commands(tree, client)
+    await setup_rewind_commands(tree, client)

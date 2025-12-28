@@ -12,3 +12,11 @@ discord-emojis.pretty.json
 database/*
 web
 .ruff_cache
+kill*
+sekam2logo.png
+__pycache__/
+*.py[codz]
+*$py.class
+config/
+commands/admin.py
+commands/vote_components/*

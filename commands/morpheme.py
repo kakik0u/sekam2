@@ -1,31 +1,39 @@
-"""
-形態素解析関連のコマンド群
+"""形態素解析関連のコマンド群
 /markov, /wordcloud, /wordrank
 """
+
 import io
 import random
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
+
 import discord
+from database.connection import run_statdb_query
 from discord import Client, app_commands
 from PIL import Image, ImageDraw, ImageFont
+from spam.protection import is_overload_allowed
+
 from core.log import insert_command_log
 from core.zichi import enforce_zichi_block
-from database.connection import run_statdb_query
-from spam.protection import is_overload_allowed
+
 try:
     from wordcloud import WordCloud
+
     WORDCLOUD_LIBRARY_AVAILABLE = True
 except ImportError:
     WORDCLOUD_LIBRARY_AVAILABLE = False
 WORDCLOUD_FONT_PATH = "./fonts/NotoSansCJKjp-Regular.otf"
 WORDCLOUD_FALLBACK_FONT_PATH = "./fonts/NotoSansCJKjp-Regular.otf"
+
+
 @dataclass
 class TimeRange:
     start: str
     end: str
     label: str
+
+
 async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client):
     @tree.command(name="markov", description="マルコフ連鎖でテキストを生成（2-gram）")
     @app_commands.describe(
@@ -47,18 +55,20 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
         use_trigram = mode == "高精度"
         print(
             f"markovコマンドが実行されました: {ctx.user.name} ({ctx.user.id}) "
-            f"ch={ch} , mode={mode}, start={start}, channel_id={channel_id}"
+            f"ch={ch} , mode={mode}, start={start}, channel_id={channel_id}",
         )
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/markov", "DENY_OVERLOAD")
                 return
             if ch == "全体":
                 await ctx.response.send_message(
-                    "全体は廃止されました。", ephemeral=True
+                    "全体は廃止されました。",
+                    ephemeral=True,
                 )
                 return
             await ctx.response.defer()
@@ -71,11 +81,12 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
                     target_channel_id = int(channel_id)
                 except ValueError:
                     await ctx.edit_original_response(
-                        content="チャンネルIDは数値で指定してください。"
+                        content="チャンネルIDは数値で指定してください。",
                     )
                     insert_command_log(ctx, "/markov", "INVALID_CHANNEL_ID")
                     return
             import asyncio
+
             try:
                 async with asyncio.timeout(60.0):
                     generated_text = await generate_markov_text(
@@ -86,13 +97,13 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
                     )
             except asyncio.TimeoutError:
                 await ctx.edit_original_response(
-                    content="処理がタイムアウトしました。しばらくしてから再度お試しください。"
+                    content="処理がタイムアウトしました。しばらくしてから再度お試しください。",
                 )
                 insert_command_log(ctx, "/markov", "TIMEOUT")
                 return
             if not generated_text:
                 await ctx.edit_original_response(
-                    content="データが不足しているため、テキストを生成できませんでした。"
+                    content="データが不足しているため、テキストを生成できませんでした。",
                 )
                 insert_command_log(ctx, "/markov", "NO_DATA")
                 return
@@ -109,11 +120,13 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
         except Exception as e:
             print(f"markovコマンドエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await ctx.edit_original_response(
-                content=f"エラーが発生しました: {str(e)[:100]}"
+                content=f"エラーが発生しました: {str(e)[:100]}",
             )
             insert_command_log(ctx, "/markov", f"ERROR:{str(e)[:50]}")
+
     @tree.command(name="wordcloud", description="ワードクラウドを生成")
     @app_commands.describe(
         mode="対象範囲",
@@ -134,12 +147,13 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             return
         print(
             f"wordcloudコマンドが実行されました: {ctx.user.name} ({ctx.user.id}) "
-            f"mode={mode}, ui={ui}, time={time}"
+            f"mode={mode}, ui={ui}, time={time}",
         )
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/wordcloud", "DENY_OVERLOAD")
                 return
@@ -198,14 +212,14 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             )
             if not word_data:
                 await ctx.edit_original_response(
-                    content="データが不足しているため、ワードクラウドを生成できませんでした。"
+                    content="データが不足しているため、ワードクラウドを生成できませんでした。",
                 )
                 insert_command_log(ctx, "/wordcloud", "NO_DATA")
                 return
             if ui == "ぎっちり":
                 if not WORDCLOUD_LIBRARY_AVAILABLE:
                     await ctx.edit_original_response(
-                        content="ぎっちりスタイルは現在利用できません。スタイリッシュをお試しください。"
+                        content="ぎっちりスタイルは現在利用できません。スタイリッシュをお試しください。",
                     )
                     insert_command_log(ctx, "/wordcloud", "LIBRARY_NOT_AVAILABLE")
                     return
@@ -232,11 +246,13 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
         except Exception as e:
             print(f"wordcloudコマンドエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await ctx.edit_original_response(
-                content=f"エラーが発生しました: {str(e)[:100]}"
+                content=f"エラーが発生しました: {str(e)[:100]}",
             )
             insert_command_log(ctx, "/wordcloud", f"ERROR:{str(e)[:50]}")
+
     @tree.command(name="wordrank", description="固有名詞ランキング")
     @app_commands.describe(mode="対象範囲", range="対象期間")
     @app_commands.allowed_installs(guilds=True, users=True)
@@ -244,7 +260,15 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
         ctx: discord.Interaction,
         mode: Literal["自分", "チャンネル"] = "自分",
         range: Literal[
-            "全期間", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"
+            "全期間",
+            "2018",
+            "2019",
+            "2020",
+            "2021",
+            "2022",
+            "2023",
+            "2024",
+            "2025",
         ] = "全期間",
     ):
         """固有名詞ランキング表示（ページネーション付き）"""
@@ -252,12 +276,13 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             return
         print(
             f"wordrankコマンドが実行されました: {ctx.user.name} ({ctx.user.id}) "
-            f"mode={mode}, range={range}"
+            f"mode={mode}, range={range}",
         )
         try:
             if not is_overload_allowed(ctx):
                 await ctx.response.send_message(
-                    "現在過負荷対策により専科外では使えません", ephemeral=True
+                    "現在過負荷対策により専科外では使えません",
+                    ephemeral=True,
                 )
                 insert_command_log(ctx, "/wordrank", "DENY_OVERLOAD")
                 return
@@ -285,7 +310,7 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
             )
             if not ranking:
                 await ctx.edit_original_response(
-                    content="データが不足しているため、ランキングを表示できませんでした。"
+                    content="データが不足しているため、ランキングを表示できませんでした。",
                 )
                 insert_command_log(ctx, "/wordrank", "NO_DATA")
                 return
@@ -296,14 +321,16 @@ async def setup_morpheme_commands(tree: app_commands.CommandTree, client: Client
         except Exception as e:
             print(f"wordrankコマンドエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await ctx.edit_original_response(
-                content=f"エラーが発生しました: {str(e)[:100]}"
+                content=f"エラーが発生しました: {str(e)[:100]}",
             )
             insert_command_log(ctx, "/wordrank", f"ERROR:{str(e)[:50]}")
+
+
 def _process_newlines(text: str) -> str:
-    """
-    改行コードを処理する
+    """改行コードを処理する
     - 2行までの連続改行: そのまま保持
     - 3行以上の連続改行: "(n行 改行)" という表記に変換
     Args:
@@ -316,11 +343,15 @@ def _process_newlines(text: str) -> str:
         "あいうえお\n\n\n\n\nかきくけこ" → "あいうえお(5行 改行)かきくけこ"
     """
     import re
+
     def replace_multiple_newlines(match):
         newline_count = len(match.group(0))
         return f"({newline_count}行 改行)"
+
     processed = re.sub(r"\n{3,}", replace_multiple_newlines, text)
     return processed
+
+
 async def generate_markov_text(
     user_id: int | None,
     channel_id: int | None,
@@ -328,8 +359,7 @@ async def generate_markov_text(
     start_word: str | None = None,
     use_trigram: bool = False,
 ) -> str | None:
-    """
-    マルコフ連鎖でテキストを生成（非同期ラッパー）
+    """マルコフ連鎖でテキストを生成（非同期ラッパー）
     Args:
         user_id: ユーザーID（Noneで全体、user_markov/から読み込み）
         channel_id: チャンネルID（Noneで全体、channel_markov/から読み込み）
@@ -340,15 +370,18 @@ async def generate_markov_text(
         生成されたテキスト（失敗時はNone）
     """
     import asyncio
+
     if user_id is not None:
         try:
             markov_data = await _load_user_markov_async(
-                user_id, use_trigram=use_trigram
+                user_id,
+                use_trigram=use_trigram,
             )
             if not markov_data:
                 if use_trigram:
                     markov_data = await _load_user_markov_async(
-                        user_id, use_trigram=False
+                        user_id,
+                        use_trigram=False,
                     )
                     use_trigram = False
                 if not markov_data:
@@ -368,12 +401,14 @@ async def generate_markov_text(
     if channel_id is not None:
         try:
             markov_data = await _load_channel_markov_async(
-                channel_id, use_trigram=use_trigram
+                channel_id,
+                use_trigram=use_trigram,
             )
             if not markov_data:
                 if use_trigram:
                     markov_data = await _load_channel_markov_async(
-                        channel_id, use_trigram=False
+                        channel_id,
+                        use_trigram=False,
                     )
                     use_trigram = False
                 if not markov_data:
@@ -391,15 +426,19 @@ async def generate_markov_text(
             print(f"channel_markov読み込みエラー: {e}")
             return None
     return await asyncio.to_thread(
-        _generate_markov_text_sync, channel_id, max_length, start_word
+        _generate_markov_text_sync,
+        channel_id,
+        max_length,
+        start_word,
     )
+
+
 def _generate_markov_text_sync(
     channel_id: int | None,
     max_length: int = 100,
     start_word: str | None = None,
 ) -> str | None:
-    """
-    マルコフ連鎖でテキストを生成（同期処理、bigramのみ）
+    """マルコフ連鎖でテキストを生成（同期処理、bigramのみ）
         channel_id: チャンネルID（Noneで全体、bigram_statsから取得）
         max_length: 生成する最大文字数
         start_word: 開始ワード（指定された場合、その単語から始まる）
@@ -463,7 +502,9 @@ def _generate_markov_text_sync(
                 LIMIT 1
             """
             fallback_row = run_statdb_query(
-                sql_fallback, (current_word_id,), fetch="one"
+                sql_fallback,
+                (current_word_id,),
+                fetch="one",
             )
             if not fallback_row:
                 break
@@ -485,9 +526,10 @@ def _generate_markov_text_sync(
         result.append(next_word)
         current_word_id = next_word_id
     return "".join(result)
+
+
 async def _load_user_markov_async(user_id: int, use_trigram: bool) -> dict | None:
-    """
-    user_markov/{user_id}/bigram.json または trigram.json を非同期で読み込み
+    """user_markov/{user_id}/bigram.json または trigram.json を非同期で読み込み
     Args:
         user_id: ユーザーID
         use_trigram: trigramを使用する場合はTrue
@@ -497,20 +539,25 @@ async def _load_user_markov_async(user_id: int, use_trigram: bool) -> dict | Non
     import asyncio
     import json
     from pathlib import Path
+
     filename = "trigram.json" if use_trigram else "bigram.json"
     file_path = Path(f"user_markov/{user_id}/{filename}")
+
     def _load_json_sync(path: Path) -> dict | None:
         if not path.exists():
             raise FileNotFoundError(f"{path} does not exist")
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data.get("data")
+
     return await asyncio.to_thread(_load_json_sync, file_path)
+
+
 async def _load_channel_markov_async(
-    channel_id: int, use_trigram: bool = False
+    channel_id: int,
+    use_trigram: bool = False,
 ) -> dict | None:
-    """
-    channel_markov/{channel_id}/bigram.json または trigram.json を非同期で読み込み
+    """channel_markov/{channel_id}/bigram.json または trigram.json を非同期で読み込み
     Args:
         channel_id: チャンネルID
         use_trigram: trigramを使用する場合はTrue
@@ -520,23 +567,27 @@ async def _load_channel_markov_async(
     import asyncio
     import json
     from pathlib import Path
+
     filename = "trigram.json" if use_trigram else "bigram.json"
     file_path = Path(f"channel_markov/{channel_id}/{filename}")
+
     def _load_json_sync(path: Path) -> dict | None:
         if not path.exists():
             raise FileNotFoundError(f"{path} does not exist")
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data.get("data")
+
     return await asyncio.to_thread(_load_json_sync, file_path)
+
+
 def _generate_text_from_json(
     markov_data: dict,
     use_trigram: bool,
     max_length: int = 100,
     start_word: str | None = None,
 ) -> str | None:
-    """
-    user_markov/またはchannel_markov/のJSONデータからマルコフ連鎖テキストを生成
+    """user_markov/またはchannel_markov/のJSONデータからマルコフ連鎖テキストを生成
     Args:
         markov_data: JSONの"data"フィールド
             bigram: {"word1:word2": count, ...}
@@ -554,12 +605,19 @@ def _generate_text_from_json(
         return None
     if use_trigram:
         return _generate_text_from_trigram(
-            markov_data, all_pairs, max_length, start_word
+            markov_data,
+            all_pairs,
+            max_length,
+            start_word,
         )
-    else:
-        return _generate_text_from_bigram(
-            markov_data, all_pairs, max_length, start_word
-        )
+    return _generate_text_from_bigram(
+        markov_data,
+        all_pairs,
+        max_length,
+        start_word,
+    )
+
+
 def _generate_text_from_bigram(
     markov_data: dict,
     all_pairs: list,
@@ -614,6 +672,8 @@ def _generate_text_from_bigram(
         result.append(next_word)
         current_word = next_word
     return "".join(result) if result else None
+
+
 def _generate_text_from_trigram(
     markov_data: dict,
     all_pairs: list,
@@ -670,14 +730,18 @@ def _generate_text_from_trigram(
         prev_word = current_word
         current_word = next_word
     return "".join(result) if result else None
+
+
 class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
     """特定チャンネルのワードクラウド用のチャンネル入力Modal"""
+
     channel_input = discord.ui.TextInput(
         label="チャンネルIDまたはメッセージリンク",
         placeholder="数字のIDか、メッセージリンクをペーストしてください",
         required=True,
         max_length=200,
     )
+
     def __init__(
         self,
         ui: str,
@@ -694,6 +758,7 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
         self.original_message = original_message
         self.command_user_id = command_user_id
         self.is_time_specified = is_time_specified
+
     async def on_submit(self, interaction: discord.Interaction):
         """Modal送信時の処理"""
         await interaction.response.defer()
@@ -702,7 +767,7 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
             channel_id = None
             if input_text.startswith("https://discord.com/channels/"):
                 parts = input_text.replace("https://discord.com/channels/", "").split(
-                    "/"
+                    "/",
                 )
                 if len(parts) >= 2:
                     guild_id = parts[0]
@@ -716,7 +781,8 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
                     channel_id = int(extracted_channel_id)
                 else:
                     await interaction.followup.send(
-                        "❌ メッセージリンクの形式が正しくありません。", ephemeral=True
+                        "❌ メッセージリンクの形式が正しくありません。",
+                        ephemeral=True,
                     )
                     return
             elif input_text == "専科全体":
@@ -726,7 +792,8 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
                     channel_id = int(input_text)
                 except ValueError:
                     await interaction.followup.send(
-                        "❌ チャンネルIDは数字で入力してください。", ephemeral=True
+                        "❌ チャンネルIDは数字で入力してください。",
+                        ephemeral=True,
                     )
                     return
             scope_name = None
@@ -746,6 +813,7 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
             if scope_name is None:
                 try:
                     from database.connection import run_statdb_query
+
                     sql = "SELECT name FROM channels WHERE id = %s"
                     result = run_statdb_query(sql, (channel_id,), fetch="one")
                     if result and result[0]:
@@ -817,17 +885,25 @@ class ChannelInputModal(discord.ui.Modal, title="チャンネル指定"):
             )
             embed.set_image(url="attachment://wordcloud.png")
             await interaction.followup.edit_message(
-                self.original_message.id, embed=embed, attachments=[file], view=view
+                self.original_message.id,
+                embed=embed,
+                attachments=[file],
+                view=view,
             )
         except Exception as e:
             print(f"チャンネル入力Modalエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await interaction.followup.send(
-                f"エラーが発生しました: {str(e)[:100]}", ephemeral=True
+                f"エラーが発生しました: {str(e)[:100]}",
+                ephemeral=True,
             )
+
+
 class ChannelInputView(discord.ui.View):
     """チャンネル入力を促すView"""
+
     def __init__(
         self,
         ui: str,
@@ -842,9 +918,12 @@ class ChannelInputView(discord.ui.View):
         self.pos_id_condition = pos_id_condition
         self.user_id = user_id
         self.is_time_specified = is_time_specified
+
     @discord.ui.button(label="📝 入力する", style=discord.ButtonStyle.primary)
     async def input_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """入力ボタン"""
         if interaction.user.id != self.user_id:
@@ -862,8 +941,11 @@ class ChannelInputView(discord.ui.View):
             self.is_time_specified,
         )
         await interaction.response.send_modal(modal)
+
+
 class TimeRangeRequestView(discord.ui.View):
     """時間指定を促すためのView"""
+
     def __init__(
         self,
         ui: str,
@@ -880,9 +962,12 @@ class TimeRangeRequestView(discord.ui.View):
         self.channel_id = channel_id
         self.pos_id_condition = pos_id_condition
         self.command_user_id = command_user_id
+
     @discord.ui.button(label="🗓 期間を入力", style=discord.ButtonStyle.primary)
     async def open_modal(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         if interaction.user.id != self.command_user_id:
             await interaction.response.send_message(
@@ -892,7 +977,8 @@ class TimeRangeRequestView(discord.ui.View):
             return
         if interaction.message is None:
             await interaction.response.send_message(
-                "元のメッセージを取得できませんでした。", ephemeral=True
+                "元のメッセージを取得できませんでした。",
+                ephemeral=True,
             )
             return
         modal = TimeRangeModal(
@@ -905,8 +991,11 @@ class TimeRangeRequestView(discord.ui.View):
             original_message=interaction.message,
         )
         await interaction.response.send_modal(modal)
+
+
 class TimeRangeModal(discord.ui.Modal, title="🗓 期間を指定"):
     """開始月・終了月を受け取るモーダル"""
+
     start_month = discord.ui.TextInput(
         label="開始月",
         placeholder="例: 2023/10",
@@ -919,6 +1008,7 @@ class TimeRangeModal(discord.ui.Modal, title="🗓 期間を指定"):
         required=True,
         max_length=7,
     )
+
     def __init__(
         self,
         ui: str,
@@ -937,6 +1027,7 @@ class TimeRangeModal(discord.ui.Modal, title="🗓 期間を指定"):
         self.pos_id_condition = pos_id_condition
         self.command_user_id = command_user_id
         self.original_message = original_message
+
     async def on_submit(self, interaction: discord.Interaction):
         if interaction.user.id != self.command_user_id:
             await interaction.response.send_message(
@@ -947,14 +1038,16 @@ class TimeRangeModal(discord.ui.Modal, title="🗓 期間を指定"):
         await interaction.response.defer()
         try:
             time_range = parse_time_range_inputs(
-                self.start_month.value.strip(), self.end_month.value.strip()
+                self.start_month.value.strip(),
+                self.end_month.value.strip(),
             )
         except ValueError as exc:
             await interaction.followup.send(str(exc), ephemeral=True)
             return
         if not self.original_message:
             await interaction.followup.send(
-                "元のメッセージを取得できませんでした。", ephemeral=True
+                "元のメッセージを取得できませんでした。",
+                ephemeral=True,
             )
             return
         await edit_message_with_wordcloud(
@@ -969,8 +1062,11 @@ class TimeRangeModal(discord.ui.Modal, title="🗓 期間を指定"):
             time_range=time_range,
             log_suffix="TIME_RANGE_CHANNEL" if self.channel_id else "TIME_RANGE_USER",
         )
+
+
 class WordCloudMoreButtonView(discord.ui.View):
     """ぎっちりスタイル用の「もっとぎっちり」ボタン"""
+
     def __init__(
         self,
         word_data: list[tuple[str, int]],
@@ -990,9 +1086,12 @@ class WordCloudMoreButtonView(discord.ui.View):
         self.time_range = time_range
         self.current_max_words = current_max_words
         self.generation_count = 1
+
     @discord.ui.button(label="🔥 もっとぎっちり", style=discord.ButtonStyle.primary)
     async def more_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """単語数を2倍にして再生成 or 破壊する"""
         if self.command_user_id and interaction.user.id != self.command_user_id:
@@ -1016,7 +1115,8 @@ class WordCloudMoreButtonView(discord.ui.View):
                 if new_word_data:
                     self.word_data = new_word_data
             image_bytes = await generate_wordcloud_image_wordcloud(
-                self.word_data, max_words=self.current_max_words
+                self.word_data,
+                max_words=self.current_max_words,
             )
             file = discord.File(fp=io.BytesIO(image_bytes), filename="wordcloud.png")
             description = f"現在の単語数: 最大{self.current_max_words}単語"
@@ -1029,28 +1129,38 @@ class WordCloudMoreButtonView(discord.ui.View):
             )
             embed.set_image(url="attachment://wordcloud.png")
             await interaction.edit_original_response(
-                embed=embed, attachments=[file], view=self
+                embed=embed,
+                attachments=[file],
+                view=self,
             )
         except Exception as e:
             print(f"もっとぎっちりボタンエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await interaction.followup.send(
-                f"エラーが発生しました: {str(e)[:100]}", ephemeral=True
+                f"エラーが発生しました: {str(e)[:100]}",
+                ephemeral=True,
             )
+
     async def _destroy_mode(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """破壊モード"""
         try:
             mask_path = "bg/killyoucloud.png"
             cover_path = "bg/killyoucover.png"
             import os
+
             if not os.path.exists(mask_path) or not os.path.exists(cover_path):
                 await interaction.followup.send("破壊失敗", ephemeral=True)
                 return
             image_bytes = await generate_wordcloud_image_wordcloud_masked(
-                self.word_data, mask_path=mask_path, cover_path=cover_path
+                self.word_data,
+                mask_path=mask_path,
+                cover_path=cover_path,
             )
             file = discord.File(fp=io.BytesIO(image_bytes), filename="destroyed.png")
             embed = discord.Embed(
@@ -1061,22 +1171,30 @@ class WordCloudMoreButtonView(discord.ui.View):
             embed.set_image(url="attachment://destroyed.png")
             button.disabled = True
             await interaction.edit_original_response(
-                embed=embed, attachments=[file], view=self
+                embed=embed,
+                attachments=[file],
+                view=self,
             )
         except Exception as e:
             print(f"破壊モードエラー: {e}")
             import traceback
+
             traceback.print_exc()
             await interaction.followup.send(
-                f"破壊に失敗しました: {str(e)[:100]}", ephemeral=True
+                f"破壊に失敗しました: {str(e)[:100]}",
+                ephemeral=True,
             )
+
+
 def parse_time_range_inputs(start_text: str, end_text: str) -> TimeRange:
     """文字列からTimeRangeを生成"""
+
     def _parse(value: str, label: str) -> datetime:
         try:
             return datetime.strptime(value, "%Y/%m")
         except ValueError as exc:
             raise ValueError(f"{label}は YYYY/MM 形式で入力してください。") from exc
+
     start_dt = _parse(start_text, "開始月")
     end_dt = _parse(end_text, "終了月")
     if start_dt > end_dt:
@@ -1085,6 +1203,8 @@ def parse_time_range_inputs(start_text: str, end_text: str) -> TimeRange:
     end_key = end_dt.strftime("%Y-%m-01")
     label = f"{start_dt.strftime('%Y/%m')}〜{end_dt.strftime('%Y/%m')}"
     return TimeRange(start=start_key, end=end_key, label=label)
+
+
 async def edit_message_with_wordcloud(
     interaction: discord.Interaction,
     target_message: discord.Message,
@@ -1125,7 +1245,9 @@ async def edit_message_with_wordcloud(
                 view=None,
             )
             insert_command_log(
-                interaction, "/wordcloud", f"LIBRARY_NOT_AVAILABLE_{log_suffix}"
+                interaction,
+                "/wordcloud",
+                f"LIBRARY_NOT_AVAILABLE_{log_suffix}",
             )
             return
         image_bytes = await generate_wordcloud_image_wordcloud(word_data)
@@ -1156,8 +1278,11 @@ async def edit_message_with_wordcloud(
         view=view,
     )
     insert_command_log(interaction, "/wordcloud", f"OK:{ui}_{log_suffix}")
+
+
 class WordRankPaginationView(discord.ui.View):
     """固有名詞ランキングのページネーション表示"""
+
     def __init__(
         self,
         ranking: list[tuple[str, int]],
@@ -1174,10 +1299,12 @@ class WordRankPaginationView(discord.ui.View):
         self.items_per_page = 10
         self.max_page = (len(ranking) - 1) // self.items_per_page
         self._update_buttons()
+
     def _update_buttons(self):
         """ボタンの有効/無効を更新"""
         self.previous_button.disabled = self.current_page == 0
         self.next_button.disabled = self.current_page >= self.max_page
+
     def create_embed(self, page: int) -> discord.Embed:
         """指定ページのEmbedを作成"""
         start_idx = page * self.items_per_page
@@ -1203,14 +1330,18 @@ class WordRankPaginationView(discord.ui.View):
                 inline=False,
             )
         return embed
+
     @discord.ui.button(label="◀ 前へ", style=discord.ButtonStyle.secondary)
     async def previous_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """前のページへ"""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message(
-                "このボタンはコマンド実行者のみ操作できます。", ephemeral=True
+                "このボタンはコマンド実行者のみ操作できます。",
+                ephemeral=True,
             )
             return
         if self.current_page > 0:
@@ -1218,14 +1349,18 @@ class WordRankPaginationView(discord.ui.View):
             self._update_buttons()
             embed = self.create_embed(self.current_page)
             await interaction.response.edit_message(embed=embed, view=self)
+
     @discord.ui.button(label="次へ ▶", style=discord.ButtonStyle.secondary)
     async def next_button(
-        self, interaction: discord.Interaction, button: discord.ui.Button
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
     ):
         """次のページへ"""
         if interaction.user.id != self.user_id:
             await interaction.response.send_message(
-                "このボタンはコマンド実行者のみ操作できます。", ephemeral=True
+                "このボタンはコマンド実行者のみ操作できます。",
+                ephemeral=True,
             )
             return
         if self.current_page < self.max_page:
@@ -1233,6 +1368,8 @@ class WordRankPaginationView(discord.ui.View):
             self._update_buttons()
             embed = self.create_embed(self.current_page)
             await interaction.response.edit_message(embed=embed, view=self)
+
+
 def _apply_sekam_watermark(
     image: Image.Image,
     watermark_path: str = "bg/sekam2logo.png",
@@ -1240,6 +1377,7 @@ def _apply_sekam_watermark(
     margin: int = 10,
 ) -> Image.Image:
     import os
+
     try:
         if not os.path.exists(watermark_path):
             return image
@@ -1265,6 +1403,8 @@ def _apply_sekam_watermark(
         return base.convert("RGB")
     except Exception:
         return image
+
+
 async def get_wordcloud_data(
     user_id: int | None,
     channel_id: int | None,
@@ -1294,10 +1434,10 @@ async def get_wordcloud_data(
         end_month = int(year_month_end.split("-")[1])
         where_conditions.append(
             "((ws.year > %s) OR (ws.year = %s AND ws.month >= %s)) AND "
-            "((ws.year < %s) OR (ws.year = %s AND ws.month <= %s))"
+            "((ws.year < %s) OR (ws.year = %s AND ws.month <= %s))",
         )
         params.extend(
-            [start_year, start_year, start_month, end_year, end_year, end_month]
+            [start_year, start_year, start_month, end_year, end_year, end_month],
         )
     else:
         where_conditions.append("ws.year = 0")
@@ -1317,6 +1457,8 @@ async def get_wordcloud_data(
     params.append(limit)
     rows = run_statdb_query(sql, tuple(params), fetch="all")
     return [(row[0], row[1]) for row in rows] if rows else []
+
+
 async def get_proper_noun_ranking(
     user_id: int | None,
     channel_id: int | None,
@@ -1345,10 +1487,10 @@ async def get_proper_noun_ranking(
         end_month = int(year_month_end.split("-")[1])
         where_conditions.append(
             "((ws.year > %s) OR (ws.year = %s AND ws.month >= %s)) AND "
-            "((ws.year < %s) OR (ws.year = %s AND ws.month <= %s))"
+            "((ws.year < %s) OR (ws.year = %s AND ws.month <= %s))",
         )
         params.extend(
-            [start_year, start_year, start_month, end_year, end_year, end_month]
+            [start_year, start_year, start_month, end_year, end_year, end_month],
         )
     else:
         where_conditions.append("ws.year = 0")
@@ -1368,9 +1510,10 @@ async def get_proper_noun_ranking(
     params.append(limit)
     rows = run_statdb_query(sql, tuple(params), fetch="all")
     return [(row[0], row[1]) for row in rows] if rows else []
+
+
 def get_word_by_id(word_id: int) -> str:
-    """
-    word_idから単語を取得
+    """word_idから単語を取得
     Args:
         word_id: 単語ID
     Returns:
@@ -1379,8 +1522,12 @@ def get_word_by_id(word_id: int) -> str:
     sql = "SELECT word FROM words WHERE word_id = %s"
     row = run_statdb_query(sql, (word_id,), fetch="one")
     return row[0] if row else ""
+
+
 async def generate_wordcloud_image_pillow(
-    word_data: list[tuple[str, int]], width: int = 1000, height: int = 700
+    word_data: list[tuple[str, int]],
+    width: int = 1000,
+    height: int = 700,
 ) -> bytes:
     if not word_data:
         img = Image.new("RGB", (width, height), color="white")
@@ -1439,6 +1586,7 @@ async def generate_wordcloud_image_pillow(
     max_count = float(word_data[0][1]) if word_data else 1.0
     min_count = float(word_data[-1][1]) if word_data else 1.0
     count_range = max_count - min_count if max_count > min_count else 1.0
+
     def get_font_size(count: int, index: int) -> tuple[str, any]:
         """出現回数とインデックスからフォントサイズを決定"""
         normalized = (
@@ -1457,14 +1605,19 @@ async def generate_wordcloud_image_pillow(
         else:
             size_key = "xsmall" if normalized > 0.2 else "tiny"
         return size_key, font_sizes[size_key]
+
     GRID_COLS = 12
     GRID_ROWS = 8
     cell_width = (width - 60) // GRID_COLS
     cell_height = (height - 60) // GRID_ROWS
     occupied_cells = set()
     placed_rects = []
+
     def check_cell_available(
-        col: int, row: int, cols_needed: int = 1, rows_needed: int = 1
+        col: int,
+        row: int,
+        cols_needed: int = 1,
+        rows_needed: int = 1,
     ) -> bool:
         """指定されたセル範囲が利用可能かチェック"""
         for c in range(col, min(col + cols_needed, GRID_COLS)):
@@ -1472,13 +1625,18 @@ async def generate_wordcloud_image_pillow(
                 if (c, r) in occupied_cells:
                     return False
         return True
+
     def mark_cells_occupied(
-        col: int, row: int, cols_needed: int = 1, rows_needed: int = 1
+        col: int,
+        row: int,
+        cols_needed: int = 1,
+        rows_needed: int = 1,
     ):
         """指定されたセル範囲を使用済みにマーク"""
         for c in range(col, min(col + cols_needed, GRID_COLS)):
             for r in range(row, min(row + rows_needed, GRID_ROWS)):
                 occupied_cells.add((c, r))
+
     def check_rect_overlap(x: int, y: int, w: int, h: int, margin: int = 5) -> bool:
         """既存の配置と重なるかチェック（微調整用）"""
         new_rect = (x - margin, y - margin, x + w + margin, y + h + margin)
@@ -1491,8 +1649,11 @@ async def generate_wordcloud_image_pillow(
             ):
                 return True
         return False
+
     def find_grid_position(
-        text: str, font: any, size_key: str
+        text: str,
+        font: any,
+        size_key: str,
     ) -> tuple[int, int] | None:
         """グリッドベースで配置位置を探す（高速版）"""
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -1524,6 +1685,7 @@ async def generate_wordcloud_image_pillow(
                     mark_cells_occupied(col, row, cols_needed, rows_needed)
                     return x, y
         return None
+
     placed_count = 0
     max_words = min(100, len(word_data))
     for idx in range(max_words):
@@ -1544,14 +1706,15 @@ async def generate_wordcloud_image_pillow(
     img.save(output, format="PNG")
     output.seek(0)
     return output.read()
+
+
 async def generate_wordcloud_image_wordcloud(
     word_data: list[tuple[str, int]],
     width: int = 1000,
     height: int = 700,
     max_words: int = 200,
 ) -> bytes:
-    """
-    ワードクラウド画像を生成（wordcloudライブラリ使用）
+    """ワードクラウド画像を生成（wordcloudライブラリ使用）
     「ぎっちり」スタイル：
     wordcloudライブラリを使用して高密度で単語を配置。
     カラフルな色合いと日本語フォントに対応。
@@ -1575,13 +1738,20 @@ async def generate_wordcloud_image_wordcloud(
         return output.read()
     word_freq = {word: float(count) for word, count in word_data}
     import os
+
     font_path = None
     if os.path.exists(WORDCLOUD_FONT_PATH):
         font_path = WORDCLOUD_FONT_PATH
     elif os.path.exists(WORDCLOUD_FALLBACK_FONT_PATH):
         font_path = WORDCLOUD_FALLBACK_FONT_PATH
+
     def custom_color_func(
-        word, font_size, position, orientation, random_state=None, **kwargs
+        word,
+        font_size,
+        position,
+        orientation,
+        random_state=None,
+        **kwargs,
     ):
         """カラフルな色を生成"""
         if random_state is None:
@@ -1590,6 +1760,7 @@ async def generate_wordcloud_image_wordcloud(
         saturation = random_state.randint(70, 90)
         lightness = random_state.randint(35, 55)
         return f"hsl({hue}, {saturation}%, {lightness}%)"
+
     wc = WordCloud(
         width=width,
         height=height,
@@ -1611,6 +1782,8 @@ async def generate_wordcloud_image_wordcloud(
     img.save(output, format="PNG")
     output.seek(0)
     return output.read()
+
+
 async def generate_wordcloud_image_wordcloud_masked(
     word_data: list[tuple[str, int]],
     mask_path: str,
@@ -1618,8 +1791,7 @@ async def generate_wordcloud_image_wordcloud_masked(
     width: int = 1000,
     height: int = 700,
 ) -> bytes:
-    """
-    マスク画像を使用したワードクラウド生成（破壊モード専用）
+    """マスク画像を使用したワードクラウド生成（破壊モード専用）
     Args:
         word_data: [(単語, 出現回数), ...] のリスト
         mask_path: マスク画像のパス（黒い部分に単語を配置）
@@ -1632,18 +1804,26 @@ async def generate_wordcloud_image_wordcloud_masked(
     if not WORDCLOUD_LIBRARY_AVAILABLE:
         raise ImportError("wordcloudライブラリがインストールされていません")
     import numpy as np
+
     mask_image = Image.open(mask_path)
     mask_array = np.array(mask_image)
     cover_image = Image.open(cover_path).convert("RGBA")
     word_freq = {word: float(count) for word, count in word_data}
     import os
+
     font_path = None
     if os.path.exists(WORDCLOUD_FONT_PATH):
         font_path = WORDCLOUD_FONT_PATH
     elif os.path.exists(WORDCLOUD_FALLBACK_FONT_PATH):
         font_path = WORDCLOUD_FALLBACK_FONT_PATH
+
     def destroy_color_func(
-        word, font_size, position, orientation, random_state=None, **kwargs
+        word,
+        font_size,
+        position,
+        orientation,
+        random_state=None,
+        **kwargs,
     ):
         """赤・オレンジ系の破壊的な色を生成"""
         if random_state is None:
@@ -1652,6 +1832,7 @@ async def generate_wordcloud_image_wordcloud_masked(
         saturation = random_state.randint(80, 100)
         lightness = random_state.randint(40, 60)
         return f"hsl({hue}, {saturation}%, {lightness}%)"
+
     wc = WordCloud(
         width=mask_array.shape[1],
         height=mask_array.shape[0],
